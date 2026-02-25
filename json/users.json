@@ -1,0 +1,92 @@
+[
+  {
+    "id": "usr_001",
+    "name": "Alex Chen",
+    "email": "alex.chen@example.com",
+    "avatar": "AC",
+    "joinedDate": "2025-08-15",
+    "role": "admin",
+    "badges": ["early-adopter", "streak-master", "quiz-king"]
+  },
+  {
+    "id": "usr_002",
+    "name": "Sarah Kim",
+    "email": "sarah.kim@example.com",
+    "avatar": "SK",
+    "joinedDate": "2025-09-02",
+    "role": "member",
+    "badges": ["top-scorer", "speed-demon"]
+  },
+  {
+    "id": "usr_003",
+    "name": "James Wilson",
+    "email": "james.wilson@example.com",
+    "avatar": "JW",
+    "joinedDate": "2025-09-10",
+    "role": "member",
+    "badges": ["consistent", "perfectionist"]
+  },
+  {
+    "id": "usr_004",
+    "name": "Priya Patel",
+    "email": "priya.patel@example.com",
+    "avatar": "PP",
+    "joinedDate": "2025-09-20",
+    "role": "member",
+    "badges": ["rising-star", "streak-master"]
+  },
+  {
+    "id": "usr_005",
+    "name": "Marcus Johnson",
+    "email": "marcus.johnson@example.com",
+    "avatar": "MJ",
+    "joinedDate": "2025-10-01",
+    "role": "admin",
+    "badges": ["early-adopter", "mentor"]
+  },
+  {
+    "id": "usr_006",
+    "name": "Yuki Tanaka",
+    "email": "yuki.tanaka@example.com",
+    "avatar": "YT",
+    "joinedDate": "2025-10-12",
+    "role": "member",
+    "badges": ["quiz-king", "speed-demon", "perfectionist"]
+  },
+  {
+    "id": "usr_007",
+    "name": "Elena Rodriguez",
+    "email": "elena.rodriguez@example.com",
+    "avatar": "ER",
+    "joinedDate": "2025-10-25",
+    "role": "member",
+    "badges": ["consistent"]
+  },
+  {
+    "id": "usr_008",
+    "name": "David Okafor",
+    "email": "david.okafor@example.com",
+    "avatar": "DO",
+    "joinedDate": "2025-11-03",
+    "role": "member",
+    "badges": ["rising-star", "top-scorer"]
+  },
+  {
+    "id": "usr_009",
+    "name": "Lina Bergström",
+    "email": "lina.bergstrom@example.com",
+    "avatar": "LB",
+    "joinedDate": "2025-11-15",
+    "role": "member",
+    "badges": ["early-adopter"]
+  },
+  {
+    "id": "usr_010",
+    "name": "Ryan Mitchell",
+    "email": "ryan.mitchell@example.com",
+    "avatar": "RM",
+    "joinedDate": "2025-12-01",
+    "role": "member",
+    "badges": ["streak-master", "mentor", "quiz-king"]
+  }
+]
