@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import usersData from "@/json/users.json";
 import tasksData from "@/json/tasks.json";
 import { User, TaskCompletion } from "./lib/types";
@@ -123,12 +124,12 @@ export default function DashboardPage() {
         {/* Top Scorer */}
         <div className="stat-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
                 Top Scorer
               </div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "-0.02em" }}>
-                {topScorer?.user.name}
+              <div style={{ fontSize: "1.25rem", fontWeight: 700, letterSpacing: "-0.02em", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {topScorer?.user.name.replace(/\s-\s*$/, "")}
               </div>
               <div style={{ fontSize: "0.85rem", color: "var(--accent-amber)", fontWeight: 600, marginTop: "2px" }}>
                 {topScorer?.meritScore} pts
@@ -144,6 +145,7 @@ export default function DashboardPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 fontSize: "1.2rem",
+                flexShrink: 0,
               }}
             >
               🏆
@@ -231,12 +233,27 @@ export default function DashboardPage() {
               </div>
               <div
                 className="avatar avatar-sm"
-                style={{ background: avatarColors[i % avatarColors.length] }}
+                style={{ 
+                  background: entry.user.avatar ? 'none' : avatarColors[i % avatarColors.length],
+                  overflow: 'hidden'
+                }}
               >
-                {entry.user.avatar}
+                {entry.user.avatar ? (
+                  <Image 
+                    src={entry.user.avatar} 
+                    alt={entry.user.name} 
+                    width={32}
+                    height={32}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  entry.user.name.charAt(0)
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{entry.user.name}</div>
+                <div style={{ fontSize: "0.875rem", fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {entry.user.name.replace(/\s-\s*$/, "")}
+                </div>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                   {entry.tasksCompleted} tasks · {entry.avgCorrectness}% accuracy
                 </div>

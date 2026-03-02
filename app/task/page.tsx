@@ -76,7 +76,7 @@ export default function TaskListPage() {
                     {task.taskTitle}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                    by {user?.name || "Unknown"} · {new Date(task.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    by {user?.name.replace(/\s-\s*$/, "") || "Unknown"} · {new Date(task.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                   </div>
                 </div>
 

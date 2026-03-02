@@ -1,7 +1,7 @@
 [
-  { "id": "task_001", "userId": "usr_001", "taskTitle": "JavaScript Fundamentals Quiz", "difficulty": "easy", "correctness": 95, "timeTakenSeconds": 180, "maxTimeSeconds": 600, "completedAt": "2026-01-10T09:30:00Z" },
-  { "id": "task_002", "userId": "usr_001", "taskTitle": "React Hooks Deep Dive", "difficulty": "hard", "correctness": 88, "timeTakenSeconds": 420, "maxTimeSeconds": 900, "completedAt": "2026-01-12T14:15:00Z" },
-  { "id": "task_003", "userId": "usr_001", "taskTitle": "CSS Grid Layout Challenge", "difficulty": "medium", "correctness": 100, "timeTakenSeconds": 300, "maxTimeSeconds": 600, "completedAt": "2026-01-15T11:00:00Z" },
+  { "id": "task_001", "userId": "cee0e48b-653a-4958-b992-f22e1764174b", "taskTitle": "JavaScript Fundamentals Quiz", "difficulty": "easy", "correctness": 95, "timeTakenSeconds": 180, "maxTimeSeconds": 600, "completedAt": "2026-01-10T09:30:00Z" },
+  { "id": "task_002", "userId": "fffe02ff-c527-4d37-9929-18565c9898fa", "taskTitle": "React Hooks Deep Dive", "difficulty": "hard", "correctness": 88, "timeTakenSeconds": 420, "maxTimeSeconds": 900, "completedAt": "2026-01-12T14:15:00Z" },
+  { "id": "task_003", "userId": "6aee6ce0-7597-4e99-a4af-bc6e27d288ec", "taskTitle": "CSS Grid Layout Challenge", "difficulty": "medium", "correctness": 100, "timeTakenSeconds": 300, "maxTimeSeconds": 600, "completedAt": "2026-01-15T11:00:00Z" },
   { "id": "task_004", "userId": "usr_002", "taskTitle": "TypeScript Generics", "difficulty": "hard", "correctness": 92, "timeTakenSeconds": 380, "maxTimeSeconds": 900, "completedAt": "2026-01-11T10:00:00Z" },
   { "id": "task_005", "userId": "usr_002", "taskTitle": "Node.js Event Loop", "difficulty": "medium", "correctness": 85, "timeTakenSeconds": 350, "maxTimeSeconds": 600, "completedAt": "2026-01-14T16:30:00Z" },
   { "id": "task_006", "userId": "usr_002", "taskTitle": "HTML Accessibility Quiz", "difficulty": "easy", "correctness": 100, "timeTakenSeconds": 120, "maxTimeSeconds": 600, "completedAt": "2026-01-16T08:45:00Z" },

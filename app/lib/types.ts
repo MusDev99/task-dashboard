@@ -2,10 +2,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  avatar: string;
+  avatar: string | null;
   joinedDate: string;
-  role: "admin" | "member";
-  badges: string[];
+  employeeId: string | null;
+  googleId: string | null;
+  isActive: boolean;
+  updatedAt: string;
+  phoneNumber: string | null;
+  roleId: string;
+  stationCode: string;
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
