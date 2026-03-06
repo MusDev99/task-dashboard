@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import usersData from "@/json/users.json";
 import tasksData from "@/json/tasks.json";
 import { User, TaskCompletion } from "../lib/types";
@@ -39,17 +40,6 @@ function getLeaderboard() {
     .map((entry, i) => ({ ...entry, rank: i + 1 }));
 }
 
-const badgeLabels: Record<string, string> = {
-  "early-adopter": "🌟 Early Adopter",
-  "streak-master": "🔥 Streak Master",
-  "quiz-king": "👑 Quiz King",
-  "top-scorer": "🎯 Top Scorer",
-  "speed-demon": "⚡ Speed Demon",
-  consistent: "📈 Consistent",
-  perfectionist: "💎 Perfectionist",
-  "rising-star": "🚀 Rising Star",
-  mentor: "🧭 Mentor",
-};
 
 export default function LeaderboardPage() {
   const leaderboard = getLeaderboard();
@@ -131,15 +121,26 @@ export default function LeaderboardPage() {
                   <div
                     className={`avatar ${isFirst ? "avatar-xl" : "avatar-lg"}`}
                     style={{
-                      background: avatarColors[(entry.rank - 1) % avatarColors.length],
+                      background: entry.user.avatar ? 'none' : avatarColors[(entry.rank - 1) % avatarColors.length],
                       margin: "0 auto 1rem",
                       boxShadow: isFirst ? "0 0 30px rgba(255, 194, 51, 0.3)" : "none",
+                      overflow: 'hidden'
                     }}
                   >
-                    {entry.user.avatar}
+                    {entry.user.avatar ? (
+                      <Image 
+                        src={entry.user.avatar} 
+                        alt={entry.user.name} 
+                        width={64}
+                        height={64}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      entry.user.name.charAt(0)
+                    )}
                   </div>
-                  <div style={{ fontSize: isFirst ? "1.15rem" : "1rem", fontWeight: 700, marginBottom: "0.25rem" }}>
-                    {entry.user.name}
+                  <div style={{ fontSize: isFirst ? "1.15rem" : "1rem", fontWeight: 700, marginBottom: "0.25rem", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {entry.user.name.replace(/\s-\s*$/, "")}
                   </div>
                   <div
                     style={{
@@ -156,13 +157,11 @@ export default function LeaderboardPage() {
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {entry.tasksCompleted} tasks · {entry.avgCorrectness}% avg
                   </div>
-                  {/* Badges */}
+                  {/* Station Code */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", justifyContent: "center", marginTop: "0.75rem" }}>
-                    {entry.user.badges.slice(0, 3).map((b) => (
-                      <span key={b} className="badge badge-indigo">
-                        {badgeLabels[b] || b}
-                      </span>
-                    ))}
+                    <span className="badge badge-indigo">
+                      {entry.user.stationCode}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -240,20 +239,32 @@ export default function LeaderboardPage() {
               </div>
 
               {/* User */}
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: 'hidden' }}>
                 <div
                   className="avatar avatar-sm"
-                  style={{ background: avatarColors[(entry.rank - 1) % avatarColors.length] }}
+                  style={{ 
+                    background: entry.user.avatar ? 'none' : avatarColors[(entry.rank - 1) % avatarColors.length],
+                    overflow: 'hidden'
+                  }}
                 >
-                  {entry.user.avatar}
+                  {entry.user.avatar ? (
+                    <Image 
+                      src={entry.user.avatar} 
+                      alt={entry.user.name} 
+                      width={32}
+                      height={32}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    entry.user.name.charAt(0)
+                  )}
                 </div>
-                <div>
-                  <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{entry.user.name}</div>
+                <div style={{ overflow: 'hidden' }}>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {entry.user.name.replace(/\s-\s*$/, "")}
+                  </div>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                    {entry.user.badges
-                      .slice(0, 2)
-                      .map((b) => badgeLabels[b] || b)
-                      .join(" · ")}
+                    {entry.user.stationCode} · {entry.user.email}
                   </div>
                 </div>
               </div>

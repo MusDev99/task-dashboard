@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import usersData from "@/json/users.json";
 import tasksData from "@/json/tasks.json";
 import { User, TaskCompletion } from "../lib/types";
@@ -65,20 +66,40 @@ export default function UsersPage() {
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "1.25rem" }}>
                 <div
                   className="avatar avatar-lg"
-                  style={{ background: avatarColors[entry.colorIndex % avatarColors.length] }}
+                  style={{ 
+                    background: entry.user.avatar ? 'none' : avatarColors[entry.colorIndex % avatarColors.length],
+                    overflow: 'hidden'
+                  }}
                 >
-                  {entry.user.avatar}
+                  {entry.user.avatar ? (
+                    <Image 
+                      src={entry.user.avatar} 
+                      alt={entry.user.name} 
+                      width={48}
+                      height={48}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    entry.user.name.charAt(0)
+                  )}
                 </div>
-                <div>
-                  <div style={{ fontSize: "1rem", fontWeight: 700 }}>{entry.user.name}</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "1rem", fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {entry.user.name.replace(/\s-\s*$/, "")}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {entry.user.email}
                   </div>
-                  <span
-                    className={`badge ${entry.user.role === "admin" ? "badge-pink" : "badge-indigo"}`}
-                  >
-                    {entry.user.role}
-                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <span className="badge badge-indigo">
+                      {entry.user.stationCode}
+                    </span>
+                    {entry.user.employeeId && (
+                      <span className="badge badge-pink">
+                        ID: {entry.user.employeeId}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -116,22 +137,6 @@ export default function UsersPage() {
                     Accuracy
                   </div>
                 </div>
-              </div>
-
-              {/* Badges */}
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "4px",
-                  marginTop: "1rem",
-                }}
-              >
-                {entry.user.badges.map((badge) => (
-                  <span key={badge} className="badge badge-indigo">
-                    {badge.replace(/-/g, " ")}
-                  </span>
-                ))}
               </div>
             </div>
           </Link>

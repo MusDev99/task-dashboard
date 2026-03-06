@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import usersData from "@/json/users.json";
 import tasksData from "@/json/tasks.json";
 import { User, TaskCompletion } from "../../lib/types";
@@ -23,17 +24,6 @@ const avatarColors = [
   "linear-gradient(135deg, #a29bfe, #6c5ce7)",
 ];
 
-const badgeLabels: Record<string, string> = {
-  "early-adopter": "🌟 Early Adopter",
-  "streak-master": "🔥 Streak Master",
-  "quiz-king": "👑 Quiz King",
-  "top-scorer": "🎯 Top Scorer",
-  "speed-demon": "⚡ Speed Demon",
-  consistent: "📈 Consistent",
-  perfectionist: "💎 Perfectionist",
-  "rising-star": "🚀 Rising Star",
-  mentor: "🧭 Mentor",
-};
 
 function getRank(userId: string): number {
   const sorted = users
@@ -101,30 +91,44 @@ export default function UserProfilePage() {
         <div
           className="avatar avatar-xl"
           style={{
-            background: avatarColors[userIndex % avatarColors.length],
+            background: user.avatar ? 'none' : avatarColors[userIndex % avatarColors.length],
             boxShadow: "0 0 30px rgba(108, 99, 255, 0.2)",
+            overflow: 'hidden'
           }}
         >
-          {user.avatar}
+          {user.avatar ? (
+            <Image 
+              src={user.avatar} 
+              alt={user.name} 
+              width={64}
+              height={64}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
+          ) : (
+            user.name.charAt(0)
+          )}
         </div>
         <div style={{ flex: 1, minWidth: "200px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
-              {user.name}
+              {user.name.replace(/\s-\s*$/, "")}
             </h1>
-            <span className={`badge ${user.role === "admin" ? "badge-pink" : "badge-indigo"}`}>
-              {user.role}
+            <span className="badge badge-indigo">
+              {user.stationCode}
             </span>
+            {user.employeeId && (
+              <span className="badge badge-pink">
+                ID: {user.employeeId}
+              </span>
+            )}
           </div>
           <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "0.75rem" }}>
-            {user.email} · Joined {new Date(user.joinedDate).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+            {user.email} · Registered {new Date(user.joinedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            {user.badges.map((b) => (
-              <span key={b} className="badge badge-indigo">
-                {badgeLabels[b] || b}
-              </span>
-            ))}
+            <div style={{ fontSize: "0.75rem", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", color: "var(--text-secondary)" }}>
+              Role ID: {user.roleId}
+            </div>
           </div>
         </div>
       </div>

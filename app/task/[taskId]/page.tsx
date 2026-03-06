@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import usersData from "@/json/users.json";
 import tasksData from "@/json/tasks.json";
 import { User, TaskCompletion } from "../../lib/types";
@@ -106,19 +107,39 @@ export default function TaskDetailPage() {
           <div className="glass-card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "14px" }}>
             <div
               className="avatar avatar-md"
-              style={{ background: avatarColors[userIndex % avatarColors.length] }}
+              style={{ 
+                background: user.avatar ? 'none' : avatarColors[userIndex % avatarColors.length],
+                overflow: 'hidden'
+              }}
             >
-              {user.avatar}
+              {user.avatar ? (
+                <Image 
+                  src={user.avatar} 
+                  alt={user.name} 
+                  width={40}
+                  height={40}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                user.name.charAt(0)
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>
                 Completed By
               </div>
-              <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>{user.name}</div>
+              <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>{user.name.replace(/\s-\s*$/, "")}</div>
             </div>
-            <span className={`badge ${user.role === "admin" ? "badge-pink" : "badge-indigo"}`}>
-              {user.role}
-            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <span className="badge badge-indigo">
+                {user.stationCode}
+              </span>
+              {user.employeeId && (
+                <span className="badge badge-pink">
+                  ID: {user.employeeId}
+                </span>
+              )}
+            </div>
           </div>
         </Link>
       )}
