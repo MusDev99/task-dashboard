@@ -332,3 +332,157 @@ body {
   border-color: var(--accent-indigo);
   color: #a8a1ff;
 }
+
+/* ─── Main Content ───────────────────────────────── */
+.main-content {
+  flex: 1;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding: 2rem;
+}
+
+/* ─── Responsive ─────────────────────────────────── */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 1rem;
+    padding-top: calc(56px + 1rem); /* offset for mobile top bar */
+  }
+
+  /* Stat cards — 2 cols on small screens */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Podium — stack vertically on mobile */
+  .podium-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+  .podium-card {
+    padding: 1.5rem 1rem !important;
+  }
+
+  /* Leaderboard table — card layout on mobile */
+  .leaderboard-header {
+    display: none !important;
+  }
+  .leaderboard-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+    position: relative;
+  }
+  .leaderboard-row-rank {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+  }
+  .leaderboard-row-user {
+    padding-right: 50px;
+  }
+  .leaderboard-row-score,
+  .leaderboard-row-tasks,
+  .leaderboard-row-accuracy {
+    text-align: left !important;
+  }
+  .leaderboard-row-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.8rem;
+  }
+  .leaderboard-row-bar {
+    width: 100%;
+  }
+
+  /* Task list — stack on mobile */
+  .task-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    padding: 1rem 1.25rem !important;
+  }
+  .task-row .task-row-meta {
+    display: flex !important;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .task-row .task-row-meta > div {
+    text-align: left !important;
+  }
+
+  /* Task detail — breakdown rows stack on very small */
+  .breakdown-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: flex-start !important;
+  }
+  .breakdown-value {
+    align-self: flex-end;
+  }
+
+  /* User detail — task history */
+  .task-history-row {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    padding: 1rem !important;
+  }
+  .task-history-row .task-history-meta {
+    display: flex !important;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .task-history-row .task-history-meta > div {
+    text-align: left !important;
+  }
+
+  /* Show mobile labels */
+  .mobile-label {
+    display: inline !important;
+  }
+
+  /* User profile header */
+  .profile-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+  .profile-badges {
+    flex-wrap: wrap !important;
+  }
+
+  /* Glass card hover — no transform on mobile */
+  .glass-card:hover {
+    transform: none;
+  }
+  .podium-card:hover {
+    transform: none;
+  }
+
+  /* Search input full width */
+  .search-input {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 0.75rem;
+    padding-top: calc(56px + 0.75rem);
+  }
+
+  /* Stat cards — single col on very small */
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stat-card {
+    padding: 1rem !important;
+  }
+
+  /* Leaderboard formula legend stacking */
+  .formula-legend {
+    font-size: 0.7rem !important;
+  }
+}

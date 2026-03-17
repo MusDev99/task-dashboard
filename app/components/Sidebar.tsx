@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 
 const navItems = [
   {
@@ -51,29 +52,38 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
 
-  return (
-    <aside
-      style={{
-        width: "260px",
-        minHeight: "100vh",
-        background: "var(--bg-sidebar)",
-        borderRight: "1px solid var(--border-subtle)",
-        padding: "2rem 0",
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}
-    >
+  const sidebarContent = (
+    <>
       {/* Logo */}
       <div
         style={{
@@ -95,6 +105,7 @@ export default function Sidebar() {
             justifyContent: "center",
             fontSize: "1.1rem",
             fontWeight: 700,
+            flexShrink: 0,
           }}
         >
           ⚡
@@ -121,6 +132,29 @@ export default function Sidebar() {
             Gamified Learning
           </div>
         </div>
+        {/* Close button (mobile only) */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+            style={{
+              marginLeft: "auto",
+              background: "none",
+              border: "none",
+              color: "var(--text-secondary)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -221,6 +255,130 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
+    </>
+  );
+
+  // ── Mobile layout ──
+  if (isMobile) {
+    return (
+      <>
+        {/* Top bar */}
+        <div
+          className="mobile-topbar"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "56px",
+            background: "var(--bg-sidebar)",
+            borderBottom: "1px solid var(--border-subtle)",
+            display: "flex",
+            alignItems: "center",
+            padding: "0 1rem",
+            zIndex: 1000,
+            gap: "12px",
+          }}
+        >
+          <button
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            style={{
+              background: "none",
+              border: "none",
+              color: "var(--text-primary)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <div
+            style={{
+              width: "28px",
+              height: "28px",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--gradient-primary)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.85rem",
+              flexShrink: 0,
+            }}
+          >
+            ⚡
+          </div>
+          <div style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "-0.02em" }}>
+            TaskBoard
+          </div>
+        </div>
+
+        {/* Backdrop */}
+        {mobileOpen && (
+          <div
+            onClick={() => setMobileOpen(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.6)",
+              backdropFilter: "blur(4px)",
+              zIndex: 1001,
+              transition: "opacity var(--transition-base)",
+            }}
+          />
+        )}
+
+        {/* Slide-out sidebar */}
+        <aside
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "280px",
+            height: "100vh",
+            background: "var(--bg-sidebar)",
+            borderRight: "1px solid var(--border-subtle)",
+            padding: "2rem 0",
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 1002,
+            transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
+            transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
+            overflowY: "auto",
+          }}
+        >
+          {sidebarContent}
+        </aside>
+      </>
+    );
+  }
+
+  // ── Desktop layout ──
+  return (
+    <aside
+      style={{
+        width: "260px",
+        minHeight: "100vh",
+        background: "var(--bg-sidebar)",
+        borderRight: "1px solid var(--border-subtle)",
+        padding: "2rem 0",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflowY: "auto",
+      }}
+    >
+      {sidebarContent}
     </aside>
   );
 }

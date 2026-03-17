@@ -44,7 +44,7 @@ export default function UserProfilePage() {
 
   if (!user) {
     return (
-      <div style={{ textAlign: "center", padding: "4rem" }}>
+      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>User not found</h1>
         <Link href="/users" style={{ color: "var(--accent-indigo)", textDecoration: "none", fontSize: "0.9rem" }}>
           ← Back to Users
@@ -78,7 +78,7 @@ export default function UserProfilePage() {
 
       {/* Profile Header */}
       <div
-        className="glass-card"
+        className="glass-card profile-header"
         style={{
           padding: "2rem",
           marginBottom: "1.5rem",
@@ -109,7 +109,7 @@ export default function UserProfilePage() {
           )}
         </div>
         <div style={{ flex: 1, minWidth: "200px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
+          <div className="profile-badges" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px", flexWrap: "wrap" }}>
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
               {user.name.replace(/\s-\s*$/, "")}
             </h1>
@@ -122,7 +122,7 @@ export default function UserProfilePage() {
               </span>
             )}
           </div>
-          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "0.75rem" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "0.75rem", wordBreak: "break-word" }}>
             {user.email} · Registered {new Date(user.joinedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -135,6 +135,7 @@ export default function UserProfilePage() {
 
       {/* Stats Row */}
       <div
+        className="stats-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
@@ -193,7 +194,7 @@ export default function UserProfilePage() {
               style={{ textDecoration: "none", color: "inherit" }}
             >
               <div
-                className="animate-fade-in-up"
+                className="task-history-row animate-fade-in-up"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "1fr 80px 80px 80px",
@@ -214,21 +215,23 @@ export default function UserProfilePage() {
                     {new Date(task.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                   </div>
                 </div>
-                <div style={{ textAlign: "center" }}>
-                  <span className={`badge badge-${task.difficulty}`}>{task.difficulty}</span>
-                </div>
-                <div style={{ textAlign: "center", fontSize: "0.85rem", fontWeight: 600 }}>
-                  {task.correctness}%
-                </div>
-                <div
-                  style={{
-                    textAlign: "center",
-                    fontSize: "0.85rem",
-                    fontWeight: 700,
-                    color: "var(--accent-amber)",
-                  }}
-                >
-                  +{Math.round(calculateTaskScore(task))}
+                <div className="task-history-meta" style={{ display: "contents" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <span className={`badge badge-${task.difficulty}`}>{task.difficulty}</span>
+                  </div>
+                  <div style={{ textAlign: "center", fontSize: "0.85rem", fontWeight: 600 }}>
+                    {task.correctness}%
+                  </div>
+                  <div
+                    style={{
+                      textAlign: "center",
+                      fontSize: "0.85rem",
+                      fontWeight: 700,
+                      color: "var(--accent-amber)",
+                    }}
+                  >
+                    +{Math.round(calculateTaskScore(task))}
+                  </div>
                 </div>
               </div>
             </Link>

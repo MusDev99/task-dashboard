@@ -95,6 +95,7 @@ export default function LeaderboardPage() {
       {/* Podium — Top 3 */}
       {!search && (
         <div
+          className="podium-grid"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr 1fr",
@@ -174,6 +175,7 @@ export default function LeaderboardPage() {
       <div className="glass-card" style={{ padding: "0", overflow: "hidden" }}>
         {/* Table Header */}
         <div
+          className="leaderboard-header"
           style={{
             display: "grid",
             gridTemplateColumns: "60px 1fr 120px 100px 100px 160px",
@@ -202,7 +204,7 @@ export default function LeaderboardPage() {
             style={{ textDecoration: "none", color: "inherit" }}
           >
             <div
-              className="animate-fade-in-up"
+              className="leaderboard-row animate-fade-in-up"
               style={{
                 display: "grid",
                 gridTemplateColumns: "60px 1fr 120px 100px 100px 160px",
@@ -221,7 +223,7 @@ export default function LeaderboardPage() {
               }}
             >
               {/* Rank */}
-              <div>
+              <div className="leaderboard-row-rank">
                 <div
                   className="rank-number"
                   style={
@@ -239,7 +241,7 @@ export default function LeaderboardPage() {
               </div>
 
               {/* User */}
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", overflow: 'hidden' }}>
+              <div className="leaderboard-row-user" style={{ display: "flex", alignItems: "center", gap: "12px", overflow: 'hidden' }}>
                 <div
                   className="avatar avatar-sm"
                   style={{ 
@@ -269,8 +271,9 @@ export default function LeaderboardPage() {
                 </div>
               </div>
 
-              {/* Merit Score */}
+              {/* Merit Score — visible on all, on mobile part of meta flow */}
               <div
+                className="leaderboard-row-score"
                 style={{
                   textAlign: "center",
                   fontSize: "1rem",
@@ -283,17 +286,17 @@ export default function LeaderboardPage() {
               </div>
 
               {/* Tasks */}
-              <div style={{ textAlign: "center", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
-                {entry.tasksCompleted}
+              <div className="leaderboard-row-tasks" style={{ textAlign: "center", fontSize: "0.875rem", color: "var(--text-secondary)" }}>
+                {entry.tasksCompleted} <span className="mobile-label" style={{ display: "none" }}>tasks</span>
               </div>
 
               {/* Accuracy */}
-              <div style={{ textAlign: "center", fontSize: "0.875rem", fontWeight: 600 }}>
+              <div className="leaderboard-row-accuracy" style={{ textAlign: "center", fontSize: "0.875rem", fontWeight: 600 }}>
                 {entry.avgCorrectness}%
               </div>
 
               {/* Score Bar */}
-              <div>
+              <div className="leaderboard-row-bar">
                 <div className="score-bar-track">
                   <div
                     className="score-bar-fill"
@@ -308,6 +311,7 @@ export default function LeaderboardPage() {
 
       {/* Formula Legend */}
       <div
+        className="formula-legend"
         style={{
           marginTop: "2rem",
           padding: "1.25rem 1.5rem",
@@ -327,13 +331,13 @@ export default function LeaderboardPage() {
             lineHeight: 1.8,
           }}
         >
-          <div>
+          <div style={{ overflowWrap: "break-word" }}>
             <span style={{ color: "var(--accent-indigo)" }}>Per Task Score</span> ={" "}
             <span style={{ color: "var(--accent-emerald)" }}>Correctness</span> ×{" "}
             <span style={{ color: "var(--accent-pink)" }}>Difficulty Weight</span> ×{" "}
             <span style={{ color: "var(--accent-amber)" }}>Time Bonus</span>
           </div>
-          <div style={{ marginTop: "4px", fontSize: "0.75rem" }}>
+          <div style={{ marginTop: "4px", fontSize: "0.75rem", overflowWrap: "break-word" }}>
             Difficulty: Easy(1x) · Medium(2x) · Hard(3x) &nbsp;&nbsp;|&nbsp;&nbsp;
             Time Bonus: max(0.5, 1 − timeTaken/maxTime)
           </div>

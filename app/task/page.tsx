@@ -30,7 +30,7 @@ export default function TaskListPage() {
       </div>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "1.5rem", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: "8px", marginBottom: "1.5rem", flexWrap: "wrap", alignItems: "center" }}>
         {difficulties.map((d) => (
           <button
             key={d}
@@ -60,7 +60,7 @@ export default function TaskListPage() {
               style={{ textDecoration: "none", color: "inherit" }}
             >
               <div
-                className="glass-card animate-fade-in-up"
+                className="glass-card task-row animate-fade-in-up"
                 style={{
                   padding: "1.25rem 1.5rem",
                   display: "grid",
@@ -80,24 +80,27 @@ export default function TaskListPage() {
                   </div>
                 </div>
 
-                {/* Difficulty */}
-                <div style={{ textAlign: "center" }}>
-                  <span className={`badge badge-${task.difficulty}`}>{task.difficulty}</span>
-                </div>
+                {/* Meta row — wraps on mobile */}
+                <div className="task-row-meta" style={{ display: "contents" }}>
+                  {/* Difficulty */}
+                  <div style={{ textAlign: "center" }}>
+                    <span className={`badge badge-${task.difficulty}`}>{task.difficulty}</span>
+                  </div>
 
-                {/* Time */}
-                <div style={{ textAlign: "center", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                  {timeMin}m {timeSec}s
-                </div>
+                  {/* Time */}
+                  <div style={{ textAlign: "center", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                    {timeMin}m {timeSec}s
+                  </div>
 
-                {/* Accuracy */}
-                <div style={{ textAlign: "center", fontSize: "0.875rem", fontWeight: 600 }}>
-                  {task.correctness}%
-                </div>
+                  {/* Accuracy */}
+                  <div style={{ textAlign: "center", fontSize: "0.875rem", fontWeight: 600 }}>
+                    {task.correctness}%
+                  </div>
 
-                {/* Score */}
-                <div style={{ textAlign: "center", fontSize: "0.95rem", fontWeight: 700, color: "var(--accent-amber)" }}>
-                  +{score}
+                  {/* Score */}
+                  <div style={{ textAlign: "center", fontSize: "0.95rem", fontWeight: 700, color: "var(--accent-amber)" }}>
+                    +{score}
+                  </div>
                 </div>
               </div>
             </Link>

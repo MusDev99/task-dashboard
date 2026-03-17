@@ -40,7 +40,7 @@ export default function TaskDetailPage() {
 
   if (!task) {
     return (
-      <div style={{ textAlign: "center", padding: "4rem" }}>
+      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>Task not found</h1>
         <Link href="/task" style={{ color: "var(--accent-indigo)", textDecoration: "none", fontSize: "0.9rem" }}>
           ← Back to Tasks
@@ -76,11 +76,11 @@ export default function TaskDetailPage() {
       {/* Task Header */}
       <div className="glass-card" style={{ padding: "2rem", marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <span className={`badge badge-${task.difficulty}`} style={{ marginBottom: "0.75rem", display: "inline-block" }}>
               {task.difficulty}
             </span>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: "0 0 0.5rem 0" }}>
+            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: "0 0 0.5rem 0", wordBreak: "break-word" }}>
               {task.taskTitle}
             </h1>
             <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
@@ -94,6 +94,7 @@ export default function TaskDetailPage() {
               background: "var(--gradient-primary)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
+              flexShrink: 0,
             }}
           >
             +{score}
@@ -104,7 +105,7 @@ export default function TaskDetailPage() {
       {/* Completed By */}
       {user && (
         <Link href={`/users/${user.id}`} style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "14px" }}>
+          <div className="glass-card" style={{ padding: "1.25rem 1.5rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap" }}>
             <div
               className="avatar avatar-md"
               style={{ 
@@ -124,13 +125,13 @@ export default function TaskDetailPage() {
                 user.name.charAt(0)
               )}
             </div>
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "2px" }}>
                 Completed By
               </div>
-              <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>{user.name.replace(/\s-\s*$/, "")}</div>
+              <div style={{ fontSize: "0.95rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name.replace(/\s-\s*$/, "")}</div>
             </div>
-            <div style={{ display: 'flex', gap: '4px' }}>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: "wrap" }}>
               <span className="badge badge-indigo">
                 {user.stationCode}
               </span>
@@ -152,12 +153,12 @@ export default function TaskDetailPage() {
 
         <div style={{ display: "flex", flexDirection: "column" }}>
           {/* Correctness */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
+          <div className="breakdown-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
             <div>
               <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>Correctness</div>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Accuracy percentage on the quiz</div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div className="breakdown-value" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
               <div className="score-bar-track" style={{ width: "120px" }}>
                 <div className="score-bar-fill" style={{ width: `${task.correctness}%` }} />
               </div>
@@ -168,44 +169,46 @@ export default function TaskDetailPage() {
           </div>
 
           {/* Difficulty */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
+          <div className="breakdown-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
             <div>
               <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>Difficulty Weight</div>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Multiplier based on task difficulty</div>
             </div>
-            <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-pink)" }}>
+            <span className="breakdown-value" style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-pink)" }}>
               {difficultyWeightLabel[task.difficulty]}
             </span>
           </div>
 
           {/* Time Bonus */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
+          <div className="breakdown-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
             <div>
               <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>Time Bonus</div>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                 Completed in {timeMin}m {timeSec}s out of {maxMin}m allowed
               </div>
             </div>
-            <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)" }}>
+            <span className="breakdown-value" style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)" }}>
               ×{timeBonus.toFixed(2)}
             </span>
           </div>
 
           {/* Final Score */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", background: "rgba(108, 99, 255, 0.05)" }}>
+          <div className="breakdown-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", background: "rgba(108, 99, 255, 0.05)" }}>
             <div>
               <div style={{ fontSize: "0.95rem", fontWeight: 700 }}>Final Merit Score</div>
-              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)", overflowWrap: "break-word" }}>
                 ({task.correctness}/100) × {task.difficulty === "easy" ? 1 : task.difficulty === "medium" ? 2 : 3} × {timeBonus.toFixed(2)} × 100
               </div>
             </div>
             <span
+              className="breakdown-value"
               style={{
                 fontSize: "1.5rem",
                 fontWeight: 800,
                 background: "var(--gradient-primary)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
+                flexShrink: 0,
               }}
             >
               +{score}
