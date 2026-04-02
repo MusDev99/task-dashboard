@@ -58,6 +58,7 @@ export default function DashboardPage() {
 
       {/* Stats Row */}
       <div
+        className="stats-grid"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
@@ -86,6 +87,7 @@ export default function DashboardPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 color: "var(--accent-indigo)",
+                flexShrink: 0,
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
@@ -114,6 +116,7 @@ export default function DashboardPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 color: "var(--accent-emerald)",
+                flexShrink: 0,
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
@@ -174,6 +177,7 @@ export default function DashboardPage() {
                 alignItems: "center",
                 justifyContent: "center",
                 color: "var(--accent-pink)",
+                flexShrink: 0,
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
@@ -184,7 +188,7 @@ export default function DashboardPage() {
 
       {/* Mini Leaderboard */}
       <div className="glass-card" style={{ padding: "1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
           <h2 style={{ fontSize: "1.1rem", fontWeight: 600, letterSpacing: "-0.02em" }}>
             🏅 Top Performers
           </h2>
@@ -258,7 +262,7 @@ export default function DashboardPage() {
                   {entry.tasksCompleted} tasks · {entry.avgCorrectness}% accuracy
                 </div>
               </div>
-              <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)", fontVariantNumeric: "tabular-nums" }}>
+              <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-amber)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
                 {entry.meritScore}
               </div>
             </div>
