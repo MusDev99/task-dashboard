@@ -1,15 +1,7 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import usersData from "@/json/users.json";
-import tasksData from "@/json/tasks.json";
-import { User, TaskCompletion } from "../../lib/types";
+import { getTaskById, getUsers } from "../../../lib/actions";
 import { calculateTaskScore } from "../../lib/merit";
-
-const users = usersData as User[];
-const tasks = tasksData as TaskCompletion[];
 
 const avatarColors = [
   "linear-gradient(135deg, #6c63ff, #9b5de5)",
@@ -30,11 +22,18 @@ const difficultyWeightLabel: Record<string, string> = {
   hard: "3x (Hard)",
 };
 
-export default function TaskDetailPage() {
-  const params = useParams();
-  const taskId = params.taskId as string;
+interface Props {
+  params: Promise<{
+    taskId: string;
+  }>;
+}
 
-  const task = tasks.find((t) => t.id === taskId);
+export default async function TaskDetailPage({ params }: Props) {
+  const { taskId } = await params;
+
+  const task = await getTaskById(taskId);
+  const users = await getUsers();
+
   const user = task ? users.find((u) => u.id === task.userId) : null;
   const userIndex = user ? users.findIndex((u) => u.id === user.id) : 0;
 
@@ -49,6 +48,7 @@ export default function TaskDetailPage() {
     );
   }
 
+  // @ts-ignore
   const score = Math.round(calculateTaskScore(task));
   const timeBonus = Math.max(0.5, 1 - task.timeTakenSeconds / task.maxTimeSeconds);
   const timeMin = Math.floor(task.timeTakenSeconds / 60);
@@ -132,9 +132,11 @@ export default function TaskDetailPage() {
               <div style={{ fontSize: "0.95rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name.replace(/\s-\s*$/, "")}</div>
             </div>
             <div style={{ display: 'flex', gap: '4px', flexWrap: "wrap" }}>
-              <span className="badge badge-indigo">
-                {user.stationCode}
-              </span>
+              {user.stationCode && (
+                <span className="badge badge-indigo">
+                  {user.stationCode}
+                </span>
+              )}
               {user.employeeId && (
                 <span className="badge badge-pink">
                   ID: {user.employeeId}

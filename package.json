@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
+    "@prisma/adapter-libsql": "^7.6.0",
+    "@prisma/client": "^6.19.3",
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -16,12 +19,14 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.37",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.1.6",
+    "prisma": "^6.19.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
   }
 }

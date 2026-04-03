@@ -1,12 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
-import usersData from "@/json/users.json";
-import tasksData from "@/json/tasks.json";
-import { User, TaskCompletion } from "../lib/types";
+import { getTasks, getUsers } from "../../lib/actions";
 import { calculateMeritScore, calculateAvgCorrectness } from "../lib/merit";
-
-const users = usersData as User[];
-const tasks = tasksData as TaskCompletion[];
 
 const avatarColors = [
   "linear-gradient(135deg, #6c63ff, #9b5de5)",
@@ -21,14 +16,16 @@ const avatarColors = [
   "linear-gradient(135deg, #a29bfe, #6c5ce7)",
 ];
 
-export default function UsersPage() {
-  const usersWithStats = users.map((user, index) => {
-    const userTasks = tasks.filter((t) => t.userId === user.id);
+export default async function UsersPage() {
+  const [users, tasks] = await Promise.all([getUsers(), getTasks()]);
+
+  const usersWithStats = users.map((user: any, index: number) => {
+    const userTasks = tasks.filter((t: any) => t.userId === user.id);
     return {
       user,
-      meritScore: calculateMeritScore(userTasks),
+      meritScore: calculateMeritScore(userTasks as any),
       tasksCompleted: userTasks.length,
-      avgCorrectness: calculateAvgCorrectness(userTasks),
+      avgCorrectness: calculateAvgCorrectness(userTasks as any),
       colorIndex: index,
     };
   });
@@ -61,14 +58,15 @@ export default function UsersPage() {
           >
             <div
               className="glass-card animate-fade-in-up"
-              style={{ padding: "1.5rem", animationDelay: `${i * 80}ms` }}
+              style={{ padding: "1.5rem", animationDelay: `${i * 80}ms`, height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between" }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "1.25rem" }}>
                 <div
                   className="avatar avatar-lg"
                   style={{ 
                     background: entry.user.avatar ? 'none' : avatarColors[entry.colorIndex % avatarColors.length],
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    flexShrink: 0
                   }}
                 >
                   {entry.user.avatar ? (
@@ -83,17 +81,19 @@ export default function UsersPage() {
                     entry.user.name.charAt(0)
                   )}
                 </div>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "1rem", fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {entry.user.name.replace(/\s-\s*$/, "")}
                   </div>
                   <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {entry.user.email}
                   </div>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <span className="badge badge-indigo">
-                      {entry.user.stationCode}
-                    </span>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: "wrap" }}>
+                    {entry.user.stationCode && (
+                      <span className="badge badge-indigo">
+                        {entry.user.stationCode}
+                      </span>
+                    )}
                     {entry.user.employeeId && (
                       <span className="badge badge-pink">
                         ID: {entry.user.employeeId}

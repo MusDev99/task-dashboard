@@ -1,15 +1,7 @@
-"use client";
-
-import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import usersData from "@/json/users.json";
-import tasksData from "@/json/tasks.json";
-import { User, TaskCompletion } from "../../lib/types";
+import { getUserById, getUsers } from "../../../lib/actions";
 import { calculateMeritScore, calculateAvgCorrectness, calculateTaskScore } from "../../lib/merit";
-
-const users = usersData as User[];
-const tasks = tasksData as TaskCompletion[];
 
 const avatarColors = [
   "linear-gradient(135deg, #6c63ff, #9b5de5)",
@@ -24,22 +16,28 @@ const avatarColors = [
   "linear-gradient(135deg, #a29bfe, #6c5ce7)",
 ];
 
-
-function getRank(userId: string): number {
+async function getRank(userId: string): Promise<number> {
+  const users = await getUsers();
   const sorted = users
-    .map((u) => ({
+    .map((u: any) => ({
       id: u.id,
-      score: calculateMeritScore(tasks.filter((t) => t.userId === u.id)),
+      score: calculateMeritScore(u.tasks || []),
     }))
     .sort((a, b) => b.score - a.score);
   return sorted.findIndex((u) => u.id === userId) + 1;
 }
 
-export default function UserProfilePage() {
-  const params = useParams();
-  const userId = params.userId as string;
+interface Props {
+  params: Promise<{
+    userId: string;
+  }>;
+}
 
-  const user = users.find((u) => u.id === userId);
+export default async function UserProfilePage({ params }: Props) {
+  const { userId } = await params;
+
+  const user = await getUserById(userId);
+  const users = await getUsers();
   const userIndex = users.findIndex((u) => u.id === userId);
 
   if (!user) {
@@ -53,10 +51,13 @@ export default function UserProfilePage() {
     );
   }
 
-  const userTasks = tasks.filter((t) => t.userId === userId);
+  // @ts-ignore
+  const userTasks = user.tasks || [];
+  // @ts-ignore
   const meritScore = calculateMeritScore(userTasks);
+  // @ts-ignore
   const avgCorrectness = calculateAvgCorrectness(userTasks);
-  const rank = getRank(userId);
+  const rank = await getRank(userId);
 
   return (
     <div style={{ maxWidth: "900px", margin: "0 auto" }}>
@@ -113,9 +114,11 @@ export default function UserProfilePage() {
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
               {user.name.replace(/\s-\s*$/, "")}
             </h1>
-            <span className="badge badge-indigo">
-              {user.stationCode}
-            </span>
+            {user.stationCode && (
+              <span className="badge badge-indigo">
+                {user.stationCode}
+              </span>
+            )}
             {user.employeeId && (
               <span className="badge badge-pink">
                 ID: {user.employeeId}
@@ -127,7 +130,7 @@ export default function UserProfilePage() {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             <div style={{ fontSize: "0.75rem", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", color: "var(--text-secondary)" }}>
-              Role ID: {user.roleId}
+              Role ID: {user.roleId || "User"}
             </div>
           </div>
         </div>
@@ -187,7 +190,7 @@ export default function UserProfilePage() {
             No tasks completed yet
           </div>
         ) : (
-          userTasks.map((task, i) => (
+          userTasks.map((task: any, i: number) => (
             <Link
               key={task.id}
               href={`/task/${task.id}`}
@@ -206,8 +209,6 @@ export default function UserProfilePage() {
                   transition: "background var(--transition-fast)",
                   animationDelay: `${i * 60}ms`,
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
               >
                 <div>
                   <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{task.taskTitle}</div>
@@ -230,6 +231,7 @@ export default function UserProfilePage() {
                       color: "var(--accent-amber)",
                     }}
                   >
+                    { /* @ts-ignore */}
                     +{Math.round(calculateTaskScore(task))}
                   </div>
                 </div>
