@@ -1,7 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
-import { getUserById, getUsers } from "../../../lib/actions";
+import { getUserById, getUsers, getTasks } from "../../../lib/actions";
+import { getLocations, getRoles } from "../../../lib/settings";
 import { calculateMeritScore, calculateAvgCorrectness, calculateTaskScore } from "../../lib/merit";
+
+// Data comes from Google Sheets; always render per request.
+export const dynamic = "force-dynamic";
 
 const avatarColors = [
   "linear-gradient(135deg, #6c63ff, #9b5de5)",
@@ -17,11 +21,11 @@ const avatarColors = [
 ];
 
 async function getRank(userId: string): Promise<number> {
-  const users = await getUsers();
+  const [users, tasks] = await Promise.all([getUsers(), getTasks()]);
   const sorted = users
-    .map((u: any) => ({
+    .map((u) => ({
       id: u.id,
-      score: calculateMeritScore(u.tasks || []),
+      score: calculateMeritScore(tasks.filter((t) => t.userId === u.id)),
     }))
     .sort((a, b) => b.score - a.score);
   return sorted.findIndex((u) => u.id === userId) + 1;
@@ -36,7 +40,7 @@ interface Props {
 export default async function UserProfilePage({ params }: Props) {
   const { userId } = await params;
 
-  const user = await getUserById(userId);
+  const [user, locations, roles] = await Promise.all([getUserById(userId), getLocations(), getRoles()]);
   const users = await getUsers();
   const userIndex = users.findIndex((u) => u.id === userId);
 
@@ -51,11 +55,10 @@ export default async function UserProfilePage({ params }: Props) {
     );
   }
 
-  // @ts-ignore
+  const location = locations.find((l) => l.id === user.locationId);
+  const role = roles.find((r) => r.id === user.roleId);
   const userTasks = user.tasks || [];
-  // @ts-ignore
   const meritScore = calculateMeritScore(userTasks);
-  // @ts-ignore
   const avgCorrectness = calculateAvgCorrectness(userTasks);
   const rank = await getRank(userId);
 
@@ -114,9 +117,9 @@ export default async function UserProfilePage({ params }: Props) {
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
               {user.name.replace(/\s-\s*$/, "")}
             </h1>
-            {user.stationCode && (
-              <span className="badge badge-indigo">
-                {user.stationCode}
+            {location && (
+              <span className="badge badge-indigo" title={location.address || undefined}>
+                {location.name}
               </span>
             )}
             {user.employeeId && (
@@ -130,7 +133,7 @@ export default async function UserProfilePage({ params }: Props) {
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             <div style={{ fontSize: "0.75rem", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", color: "var(--text-secondary)" }}>
-              Role ID: {user.roleId || "User"}
+              Role: {role?.name ?? "No role"}
             </div>
           </div>
         </div>
@@ -190,12 +193,8 @@ export default async function UserProfilePage({ params }: Props) {
             No tasks completed yet
           </div>
         ) : (
-          userTasks.map((task: any, i: number) => (
-            <Link
-              key={task.id}
-              href={`/task/${task.id}`}
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
+          userTasks.map((task, i) => (
+            <div key={task.id}>
               <div
                 className="task-history-row animate-fade-in-up"
                 style={{
@@ -205,9 +204,7 @@ export default async function UserProfilePage({ params }: Props) {
                   padding: "1rem 1.5rem",
                   alignItems: "center",
                   borderBottom: "1px solid var(--border-subtle)",
-                  cursor: "pointer",
-                  transition: "background var(--transition-fast)",
-                  animationDelay: `${i * 60}ms`,
+                                    animationDelay: `${i * 60}ms`,
                 }}
               >
                 <div>
@@ -231,12 +228,12 @@ export default async function UserProfilePage({ params }: Props) {
                       color: "var(--accent-amber)",
                     }}
                   >
-                    { /* @ts-ignore */}
+                    
                     +{Math.round(calculateTaskScore(task))}
                   </div>
                 </div>
               </div>
-            </Link>
+            </div>
           ))
         )}
       </div>

@@ -6,12 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate:sheets": "node --env-file=.env scripts/migrate-to-sheets.ts",
+    "migrate:settings": "node --env-file=.env scripts/migrate-settings.ts"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.2",
-    "@prisma/adapter-libsql": "^7.6.0",
-    "@prisma/client": "^6.19.3",
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -24,9 +23,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.1.6",
-    "prisma": "^6.19.3",
     "tailwindcss": "^4",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
 }

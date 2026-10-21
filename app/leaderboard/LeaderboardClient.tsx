@@ -136,9 +136,9 @@ export default function LeaderboardClient({ initialLeaderboard }: { initialLeade
                   </div>
                   {/* Station Code */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", justifyContent: "center", marginTop: "0.75rem" }}>
-                    {entry.user.stationCode && (
+                    {entry.locationName && (
                        <span className="badge badge-indigo">
-                         {entry.user.stationCode}
+                         {entry.locationName}
                        </span>
                     )}
                   </div>
@@ -244,7 +244,7 @@ export default function LeaderboardClient({ initialLeaderboard }: { initialLeade
                     {entry.user.name.replace(/\s-\s*$/, "")}
                   </div>
                   <div style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-                    {entry.user.stationCode} · {entry.user.email}
+                    {entry.locationName ? `${entry.locationName} · ` : ""}{entry.user.email}
                   </div>
                 </div>
               </div>

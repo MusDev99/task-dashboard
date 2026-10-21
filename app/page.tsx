@@ -1,14 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
-import usersData from "@/json/users.json";
-import tasksData from "@/json/tasks.json";
+import { loadUsers, getTasks, getRoster } from "../lib/actions";
+import { getShiftConfig } from "../lib/shifts";
+import { isRealDate, todayIn } from "../lib/roster-dates";
+import { toResources } from "../lib/whereabouts";
+import { getLocations } from "../lib/settings";
+import WhereaboutsSection from "./whereabouts/WhereaboutsSection";
 import { User, TaskCompletion } from "./lib/types";
 import { calculateMeritScore, calculateAvgCorrectness } from "./lib/merit";
 
-const users = usersData as User[];
-const tasks = tasksData as TaskCompletion[];
+// Data comes from Google Sheets; always render per request.
+export const dynamic = "force-dynamic";
 
-function getLeaderboard() {
+function getLeaderboard(users: User[], tasks: TaskCompletion[]) {
   return users
     .map((user) => {
       const userTasks = tasks.filter((t) => t.userId === user.id);
@@ -32,8 +36,13 @@ const avatarColors = [
   "linear-gradient(135deg, #9b5de5, #f15bb5)",
 ];
 
-export default function DashboardPage() {
-  const leaderboard = getLeaderboard();
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  const { date: requested } = await searchParams;
+  const config = await getShiftConfig();
+  const today = todayIn(config.timezone);
+  const date = requested && isRealDate(requested) ? requested : today;
+  const [{ users, error: usersError }, tasks, roster, locations] = await Promise.all([loadUsers(), getTasks(), getRoster(date.slice(0, 7)), getLocations()]);
+  const leaderboard = getLeaderboard(users, tasks);
   const totalTasks = tasks.length;
   const topScorer = leaderboard[0];
 
@@ -55,6 +64,16 @@ export default function DashboardPage() {
           Welcome back! Here&apos;s your learning community at a glance.
         </p>
       </div>
+
+      {/* Daily Whereabouts (derived from the roster) */}
+      <WhereaboutsSection
+        resources={toResources(users, locations)}
+        entries={roster.entries}
+        config={config}
+        initialDate={date}
+        today={today}
+        loadError={roster.error || usersError}
+      />
 
       {/* Stats Row */}
       <div

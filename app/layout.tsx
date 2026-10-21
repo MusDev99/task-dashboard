@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Sidebar from "./components/Sidebar";
+import MigrationNotice from "./components/MigrationNotice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TaskBoard — Gamified Learning Leaderboard",
-  description: "Track your merit score, compete on the leaderboard, and level up your learning through gamified task completion.",
+  title: "WorkForce Management",
+  description: "Plan team capacity from the roster and assign tasks by availability.",
 };
 
 export default function RootLayout({
@@ -34,6 +35,7 @@ export default function RootLayout({
       >
         <Sidebar />
         <main className="main-content">
+          <MigrationNotice />
           {children}
         </main>
       </body>

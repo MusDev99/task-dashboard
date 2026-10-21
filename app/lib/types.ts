@@ -9,8 +9,8 @@ export interface User {
   isActive: boolean;
   updatedAt: string;
   phoneNumber: string | null;
-  roleId: string;
-  stationCode: string;
+  roleId: string | null;
+  locationId: string | null;
 }
 
 export type Difficulty = "easy" | "medium" | "hard";
