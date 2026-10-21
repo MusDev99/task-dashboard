@@ -39,7 +39,11 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
 };
 
 
-/** Rows of a settings tab, or null when the tab doesn't exist yet (caller uses defaults). */
+/**
+ * Rows of a settings tab, or null when the tab doesn't exist yet. STRICT: any other failure
+ * (auth, network, quota) throws. Writers must use this one, so an outage is never mistaken for
+ * "tab missing" and seeded over real data.
+ */
 export async function readSettingsTab(tab: string): Promise<Record<string, Cell>[] | null> {
   try {
     return await readTable(tab);
@@ -49,8 +53,21 @@ export async function readSettingsTab(tab: string): Promise<Record<string, Cell>
   }
 }
 
+/**
+ * Tolerant variant for read-only getters: on any failure it logs and returns null, so pages fall back
+ * to the JSON defaults and show their own "couldn't load" banner instead of crashing the whole route.
+ */
+export async function readSettingsTabSafe(tab: string): Promise<Record<string, Cell>[] | null> {
+  try {
+    return await readSettingsTab(tab);
+  } catch (e) {
+    console.error(`Settings tab "${tab}" could not be read; using defaults:`, e instanceof Error ? e.message : e);
+    return null;
+  }
+}
+
 export async function getAppSettings(): Promise<AppSettings> {
-  const rows = await readSettingsTab("app_settings");
+  const rows = await readSettingsTabSafe("app_settings");
   if (!rows) return DEFAULT_APP_SETTINGS;
   const map = new Map(rows.map((r) => [text(r.key), r.value]));
   const tz = text(map.get("timezone") ?? "");
@@ -64,7 +81,7 @@ export async function getAppSettings(): Promise<AppSettings> {
 }
 
 export async function getLocations(): Promise<Location[]> {
-  const rows = (await readSettingsTab("locations")) ?? [];
+  const rows = (await readSettingsTabSafe("locations")) ?? [];
   return rows
     .map((r) => ({ id: text(r.id), code: text(r.code), name: text(r.name), type: text(r.type) || "other", address: text(r.address), active: bool(r.active, true) }))
     .filter((l) => l.id)
@@ -72,7 +89,7 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 export async function getRoles(): Promise<Role[]> {
-  const rows = (await readSettingsTab("roles")) ?? [];
+  const rows = (await readSettingsTabSafe("roles")) ?? [];
   return rows
     .map((r) => ({ id: text(r.id), name: text(r.name), description: text(r.description), active: bool(r.active, true) }))
     .filter((r) => r.id)

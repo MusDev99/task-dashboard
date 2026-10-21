@@ -1,79 +1,85 @@
 # WorkForce Management
 
-A resource-management system for small and medium teams: plan work capacity from the roster and assign tasks by availability. Built with Next.js and Tailwind CSS; Google Sheets is the database (one tab per table). The original gamified leaderboard is still available under Leaderboard / Completions.
+A resource-management system for small and medium teams: **plan work capacity from the roster, then assign tasks by availability.** Built with Next.js (App Router), React 19, Tailwind CSS 4 and TypeScript. **Google Sheets is the database** (one tab per table), so non-developers can also inspect the data.
 
-## Google Sheets setup
-
-1. Create a Google Cloud service account, enable the **Google Sheets API**, and download a JSON key.
-2. Create a spreadsheet and share it with the service account email as **Editor**.
-3. Copy `.env.example` to `.env` and set `GOOGLE_SHEET_ID` and `GOOGLE_SHEET_PATH` (path to the JSON key). Where files aren't available, set `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` instead.
-4. Seed the sheet from `json/` (creates/overwrites the `users` and `tasks` tabs): `npm run migrate:sheets`
-
-Tabs are `users`, `tasks` and `roster` (created automatically on first roster edit); row 1 is the header (see `lib/schema.ts`). Edit rows in the sheet and refresh the site (reads are cached for ~15s).
+> The original gamified quiz leaderboard is still available at `/leaderboard`. It reads the legacy `tasks` tab (completed quizzes) and is separate from work tasks.
 
 ## Features
 
-- 📋 Task Management System
-- 📚 Documentation Section
-- 🎨 Modern UI with Tailwind CSS
-- ⚡ Fast and Responsive Design
-- 🔄 Real-time Updates
-- 📱 Mobile-First Approach
+| Area | Route | What it does |
+|---|---|---|
+| **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. Below it: the legacy leaderboard stats. |
+| **Roster** | `/roster` | Month grid of every active person. Click or drag cells to assign a shift or leave, `+` above a date to assign everyone, **Clear schedule** to bulk-remove, **Export / Upload CSV**. One record per person per day. |
+| **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views. Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. |
+| **Users** | `/users` | Admin table/grid with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
+| **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
+| **Leaderboard** | `/leaderboard` | Legacy merit-score ranking. |
 
-## Getting Started
+## Google Sheets setup
 
-First, run the development server:
+1. Create a Google Cloud service account, enable the **Google Sheets API**, and download a JSON key into `keys/` (git-ignored).
+2. Create a spreadsheet and share it with the service account's email as **Editor**.
+3. Copy `.env.example` to `.env` and set `GOOGLE_SHEET_ID` and `GOOGLE_SHEET_PATH` (path to the JSON key). Where files aren't available (e.g. Netlify) set `GOOGLE_SERVICE_ACCOUNT_EMAIL` + `GOOGLE_PRIVATE_KEY` instead and leave `GOOGLE_SHEET_PATH` unset.
+4. Seed sample data (creates/overwrites `users` and `tasks`): `npm run migrate:sheets`
+5. Create the settings tabs: `npm run migrate:settings` (see below).
+
+### Tabs
+
+| Tab | Purpose | Created |
+|---|---|---|
+| `users` | People (id, email, name, employeeId, locationId, roleId, …) | `migrate:sheets` |
+| `tasks` | Legacy quiz completions (leaderboard) | `migrate:sheets` |
+| `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
+| `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
+| `roster_codes` | Work shifts + leave types | `migrate:settings` or first Settings save |
+| `locations`, `roles` | Managed lists used by users | `migrate:settings` or first Settings save |
+| `task_statuses`, `story_points`, `app_settings` | Task workflow + general settings | `migrate:settings` or first Settings save |
+
+Row 1 of every tab is the header (columns are defined in `lib/schema.ts`). **Don't rename header cells by hand**: the app reports a clear error if a required column is missing. Edit rows in the sheet if you like; the site reads are cached for ~15 seconds.
+
+### Migrating an older sheet (`npm run migrate:settings`)
+
+Safe to re-run. It seeds the settings tabs from `json/` if they're missing, backs up the `users` tab as `users_backup_YYYYMMDD`, replaces the old `stationCode` column with `locationId` (creating a location for each distinct station code), and creates a role for each role id in use (rename them in **Settings → Roles**). Until it has run, the app shows a banner telling you to run it.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm run build      # production build
+npx tsc --noEmit   # typecheck (ESLint config is currently broken)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploying to Netlify
 
-## Project Structure
+`netlify.toml` already runs `npm run build` with the Next.js plugin. In Netlify set:
 
-- `/app` - Main application code
-  - `/task` - Task management features
-  - `/docs` - Documentation section
-  - `page.tsx` - Landing page
-  - `layout.tsx` - Root layout
-  - `globals.css` - Global styles
+- `GOOGLE_SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL` (the key file's `client_email`) and `GOOGLE_PRIVATE_KEY` (its `private_key`), scoped to Functions.
+- `NODE_VERSION=22`.
+- **Don't** set `GOOGLE_SHEET_PATH` (the key file isn't deployed).
 
-## Tech Stack
+**Troubleshooting a failing deploy**
 
-- [Next.js 13+](https://nextjs.org) - React framework
-- [Tailwind CSS](https://tailwindcss.com) - Utility-first CSS framework
-- [TypeScript](https://www.typescriptlang.org) - Type safety
-- [Geist Font](https://vercel.com/font) - Modern typography
+- A blank page saying *"Application error: a server-side exception has occurred"* with only a digest means the server threw before rendering. Open Netlify → **Logs → Functions**, find the failing request and read the first error line. Typical causes: `Missing environment variable GOOGLE_PRIVATE_KEY` (not set, or not scoped to Functions), `…is not valid PEM` (key pasted incompletely), `Cannot read service-account key at …` (`GOOGLE_SHEET_PATH` is set on Netlify — remove it), or a Sheets API `403`/`404` (sheet not shared with the service account as Editor, or the wrong `GOOGLE_SHEET_ID`).
+- Since the credentials/sheet problems above no longer crash pages, you'll normally see the page with a red *"Couldn't load … from Google Sheets"* banner instead, and the exact reason in the function logs. Env-var changes only apply to **new deploys**: trigger a redeploy after editing them.
 
-## Learn More
+> ⚠️ The app has **no authentication yet**: anyone with the URL can view and edit everything. Protect the site (e.g. Netlify password protection) or add a login before sharing it.
 
-To learn more about the technologies used in this project:
+## Project structure
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [TypeScript Documentation](https://www.typescriptlang.org/docs)
+- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `settings/`, `whereabouts/`, `leaderboard/`
+- `app/components/` shared UI (sidebar, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
+- `lib/` server logic: `googleSheets.ts` (Sheets client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), pure helpers (`capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
+- `json/` seed defaults only (settings live in the sheet once migrated)
+- `scripts/` one-off migrations
+- `CLAUDE.md` project rules for contributors/AI (architecture, UX standard, definition of done)
 
-## Deploy on Vercel
+## Changelog
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-## Roster
-
-`/roster` shows every active user's shifts and leave for a month. Click or drag cells to assign a shift or leave (PH / AL / MC), use `+` above a date to assign everyone, **Clear schedule** to bulk-remove, and **Export / Upload CSV** (`email` or `employeeId`, `date`, `code`). Records are stored in the `roster` tab, one row per user per day. Shift and leave codes (hours, colours) are configured in `json/shifts.json`.
-
-## Dashboard: Daily Whereabouts
-
-The dashboard opens with a read-only **Daily Whereabouts** view for any day (`?date=YYYY-MM-DD`): who is on which shift, who is on leave (PH / AL / MC) and who has no roster entry yet, with a filter and a **Copy chat text** button that produces a plain-text summary for chat.
-
-## Task Management
-
-`/tasks` plans and assigns work in **List Tree**, **Kanban** (drag between To Do / In Progress / Completed / Closed) or **Calendar** views. Each task has a generated code (`TSK-0001`), status, story points with complexity (XS–XXL), one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL) and one level of subtasks with their own assignee and points. The assignee picker shows each person's roster availability for the task's dates and their open story points; unavailable people get a warning but can still be assigned. Statuses and the point scale are configured in `json/task-config.json`; data is stored in the `work_tasks` tab.
+- **Resilience**: if Google Sheets can't be reached or credentials are wrong, pages now load with an error banner (and log the reason) instead of crashing with a server-side exception. Settings fall back to the built-in defaults while the sheet is unreachable.
+- **Operational Settings**: manage shifts, leave types, locations, roles, task statuses, story points and general options in the app. Location replaces the free-text station code on users; roles are a managed list. The legacy `/task` ("Completions") pages were removed.
+- **Task Management**: `/tasks` with List Tree / Kanban / Calendar, subtasks, labels, links, story points and availability-aware assignment. App renamed to WorkForce Management.
+- **Daily Whereabouts** on the dashboard.
+- **Roster** with in-cell editing, bulk clear and CSV import/export.
+- **Users** admin module (CRUD, filters, pagination).
+- **Google Sheets** replaces Prisma/SQLite as the database.

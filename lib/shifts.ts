@@ -1,6 +1,6 @@
 import defaults from "../json/shifts.json";
 import { bool, num, optText, text } from "./cells";
-import { getAppSettings, readSettingsTab } from "./settings";
+import { getAppSettings, readSettingsTabSafe } from "./settings";
 
 export interface ShiftCode {
   code: string;
@@ -34,7 +34,7 @@ export const DEFAULT_ROSTER_CODES: ShiftCode[] = (defaults.codes as Seed[]).map(
 
 /** Shift + leave codes from the `roster_codes` tab (JSON defaults until it exists) and the org timezone. */
 export async function getShiftConfig(): Promise<ShiftConfig> {
-  const [settings, rows] = await Promise.all([getAppSettings(), readSettingsTab("roster_codes")]);
+  const [settings, rows] = await Promise.all([getAppSettings(), readSettingsTabSafe("roster_codes")]);
   const codes: ShiftCode[] = rows
     ? rows
         .map((r) => ({

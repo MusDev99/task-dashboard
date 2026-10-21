@@ -17,16 +17,32 @@ function env(name: string): string {
   return value;
 }
 
+/**
+ * Accepts the many shapes a private key ends up in when pasted into a hosting UI: real newlines,
+ * literal "\\n", surrounding quotes, newlines collapsed to spaces, or the whole key JSON. The PEM is
+ * rebuilt from the base64 body, so only a genuinely incomplete key is rejected.
+ */
 function normalizeKey(raw: string, source: string): string {
-  const key = raw
-    .trim()
-    .replace(/^["']|["']$/g, "") // stray surrounding quotes
-    .replace(/\\n/g, "\n"); // literal "\n" -> newline
+  let text = raw.trim().replace(/^["']|["']$/g, "");
+  if (text.startsWith("{")) {
+    try {
+      text = String(JSON.parse(text).private_key ?? ""); // the whole service-account JSON was pasted
+    } catch {
+      /* fall through to the PEM check below */
+    }
+  }
+  text = text.replace(/\\n/g, "\n");
+
+  const match = text.match(/-----BEGIN ([A-Z ]+)-----([\s\S]*?)-----END \1-----/);
+  const body = match?.[2].replace(/\s+/g, "") ?? "";
+  const key = match ? `-----BEGIN ${match[1]}-----\n${(body.match(/.{1,64}/g) ?? []).join("\n")}\n-----END ${match[1]}-----\n` : text;
   try {
     createPrivateKey(key);
   } catch {
+    // Describe the problem without echoing any of the secret.
+    const hint = `value is ${raw.trim().length} characters; BEGIN line ${text.includes("-----BEGIN") ? "found" : "MISSING"}, END line ${text.includes("-----END") ? "found" : "MISSING"}, key body ${body.length} characters (a complete key has about 1600)`;
     throw new Error(
-      `Google private key from ${source} is not valid PEM. It must start with '-----BEGIN PRIVATE KEY-----' and end with '-----END PRIVATE KEY-----'. Set GOOGLE_SHEET_PATH to the service-account JSON file.`
+      `Google private key from ${source} is not valid PEM (${hint}). Paste the full "private_key" value from the service-account JSON, from -----BEGIN PRIVATE KEY----- to -----END PRIVATE KEY-----.`
     );
   }
   return key;

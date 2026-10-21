@@ -1,6 +1,6 @@
 import defaults from "../json/task-config.json";
 import { bool, num, text } from "./cells";
-import { getAppSettings, readSettingsTab } from "./settings";
+import { getAppSettings, readSettingsTabSafe } from "./settings";
 
 export interface TaskStatus {
   key: string;
@@ -43,7 +43,7 @@ export const DEFAULT_STORY_POINTS: StoryPoint[] = defaults.storyPoints.map((p) =
 
 /** Statuses, story points and limits from their tabs (JSON defaults until they exist). */
 export async function getTaskConfig(): Promise<TaskConfig> {
-  const [settings, statusRows, pointRows] = await Promise.all([getAppSettings(), readSettingsTab("task_statuses"), readSettingsTab("story_points")]);
+  const [settings, statusRows, pointRows] = await Promise.all([getAppSettings(), readSettingsTabSafe("task_statuses"), readSettingsTabSafe("story_points")]);
   let statuses: TaskStatus[] = statusRows
     ? statusRows
         .map((r) => ({
