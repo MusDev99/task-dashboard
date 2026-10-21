@@ -1,0 +1,9 @@
+{
+  "timezone": "Asia/Kuala_Lumpur",
+  "codes": [
+    { "code": "STD", "label": "Standard shift", "type": "shift", "hours": 9, "start": "09:00", "end": "18:00", "color": "#ffc233" },
+    { "code": "PH", "label": "Public holiday", "type": "leave", "hours": 0, "color": "#9b5de5" },
+    { "code": "AL", "label": "Annual leave", "type": "leave", "hours": 0, "color": "#00c9a7" },
+    { "code": "MC", "label": "Medical leave", "type": "leave", "hours": 0, "color": "#ff6b6b" }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "codePrefix": "TSK",
+  "statuses": [
+    { "key": "todo", "label": "To Do", "color": "#3b9eff", "open": true },
+    { "key": "in_progress", "label": "In Progress", "color": "#ff9f1c", "open": true },
+    { "key": "completed", "label": "Completed", "color": "#00c9a7", "open": false },
+    { "key": "closed", "label": "Closed / Cancelled", "color": "#8b8da3", "open": false }
+  ],
+  "storyPoints": [
+    { "value": 1, "complexity": "XS", "label": "Trivial" },
+    { "value": 2, "complexity": "S", "label": "Small" },
+    { "value": 3, "complexity": "M", "label": "Medium" },
+    { "value": 5, "complexity": "L", "label": "Large" },
+    { "value": 8, "complexity": "XL", "label": "Very large" },
+    { "value": 13, "complexity": "XXL", "label": "Huge (consider splitting)" }
+  ],
+  "maxLabels": 10,
+  "maxLinks": 10
+}
