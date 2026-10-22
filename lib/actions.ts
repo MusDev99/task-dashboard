@@ -1,11 +1,11 @@
-import { readTable, type Cell } from "./googleSheets";
+import { readTable, type Cell } from "./store";
 import { USER_COLUMNS, TASK_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
 import type { User, TaskCompletion, Difficulty } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
 import { MONTH_RE } from "./roster-dates";
 
-// Data lives in a Google Sheet: tab "users" and tab "tasks" (see lib/schema.ts).
+// Tables: "users" and "tasks" (see lib/schema.ts).
 
 const str = (v: Cell): string | null => (v == null || v === "" ? null : String(v));
 const bool = (v: Cell): boolean => v === true || String(v).toUpperCase() === "TRUE";
@@ -122,7 +122,7 @@ export async function getRoster(month: string): Promise<{ entries: RosterEntry[]
     const rows = await readTable("roster");
     return { entries: rows.map(toRosterEntry).filter((e) => e.date.startsWith(month)), error: false };
   } catch (error) {
-    // A not-yet-created tab makes Sheets answer 400 "Unable to parse range": treat that as empty.
+    // A table that hasn't been created yet answers 400 "Unable to parse range": treat that as empty.
     if (String(error).includes("Unable to parse range")) return { entries: [], error: false };
     console.error("Error fetching roster:", error);
     return { entries: [], error: true };

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ensureTab, upsertRowsById, deleteRowsByIds, readTable } from "./googleSheets";
+import { ensureTab, upsertRowsById, deleteRowsByIds, readTable } from "./store";
 import { getUsers, getRoster } from "./actions";
 import { getShiftConfig } from "./shifts";
 import { ROSTER_COLUMNS } from "./schema";
@@ -17,7 +17,7 @@ const refresh = () => {
 };
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);
-  return { ok: false, message: "Couldn't reach Google Sheets. Please try again." };
+  return { ok: false, message: "Couldn't save right now. Please try again." };
 };
 
 async function context() {

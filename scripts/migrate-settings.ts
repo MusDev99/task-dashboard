@@ -5,7 +5,7 @@
 //  3. creates a role for every roleId in use
 //
 //   node --env-file=.env scripts/migrate-settings.ts
-import { readTable, writeTable, type Cell } from "../lib/googleSheets.ts";
+import { readTable, writeTable, type Cell } from "../lib/store.ts";
 import { ensureLocations, ensureRoles, seedDefaults } from "./seed-helpers.ts";
 
 const seeded = await seedDefaults();

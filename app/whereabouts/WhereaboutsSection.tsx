@@ -145,7 +145,7 @@ export default function WhereaboutsSection({ resources, entries, config, initial
       </div>
 
       {(loadError || fetchError) && (
-        <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load the roster from Google Sheets. Check the connection and sharing settings, then refresh.</div>
+        <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load the roster. Please refresh. If it keeps happening, contact an administrator.</div>
       )}
 
       <div className="wb-cards">

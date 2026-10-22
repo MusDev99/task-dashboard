@@ -1,10 +1,9 @@
-// One-off migration: copies json/users.json and json/tasks.json into the
-// "users" and "tasks" tabs of the Google Sheet (tabs are created if missing,
-// and overwritten if they exist).
+// One-off seed: copies json/users.json and json/tasks.json into the "users" and
+// "tasks" tables (created if missing, OVERWRITTEN if they exist).
 //
-//   node --env-file=.env scripts/migrate-to-sheets.ts
+//   node --env-file=.env scripts/seed-data.ts
 import { readFileSync } from "node:fs";
-import { writeTable, type Cell } from "../lib/googleSheets.ts";
+import { writeTable, type Cell } from "../lib/store.ts";
 import { USER_COLUMNS, TASK_COLUMNS } from "../lib/schema.ts";
 import { ensureLocations } from "./seed-helpers.ts";
 

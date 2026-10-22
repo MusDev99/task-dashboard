@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { appendRow, deleteRowsMatching, ensureTab, readTable, updateRowByKey, writeTable, type Cell } from "./googleSheets";
+import { appendRow, deleteRowsMatching, ensureTab, readTable, updateRowByKey, writeTable, type Cell } from "./store";
 import { getShiftConfig, DEFAULT_ROSTER_CODES } from "./shifts";
 import { getTaskConfig, DEFAULT_TASK_STATUSES, DEFAULT_STORY_POINTS } from "./task-config";
 import { getLocations, getRoles, readSettingsTab } from "./settings";
@@ -19,7 +19,7 @@ function refresh() {
 }
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);
-  return { ok: false, message: "Couldn't reach Google Sheets. Please try again." };
+  return { ok: false, message: "Couldn't save right now. Please try again." };
 };
 const asRow = (r: SettingRecord) => r as Record<string, Cell>;
 

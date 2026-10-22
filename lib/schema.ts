@@ -1,4 +1,4 @@
-// Column order of each Google Sheet tab (tab = table, row 1 = header).
+// Column order of each table (row 1 = header).
 export const USER_COLUMNS = [
   "id", "email", "name", "employeeId", "googleId", "isActive", "joinedDate",
   "updatedAt", "phoneNumber", "roleId", "avatar", "locationId",

@@ -1,4 +1,4 @@
-// Pure helpers (safe in client components; lib/task-config.ts reads the sheet).
+// Pure helpers (safe in client components; lib/task-config.ts reads the store).
 import type { TaskConfig } from "./task-config";
 
 /** The status new tasks start in. */
