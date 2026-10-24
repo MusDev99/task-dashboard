@@ -7,6 +7,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - `npm run seed:data` — seeds the `users` and `tasks` tables from `json/` (**overwrites them**; also resets any CRUD changes; does not touch `roster` or settings tables)
 - `npm run migrate:settings` — idempotent: seeds settings tables from `json/` if missing, backs up `users`, converts `stationCode` → `locationId`, creates roles from role ids in use
 - `npx tsc --noEmit` — typecheck (ESLint config is currently broken; don't rely on `next lint`)
+- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks
 
 ## Data rules
 - Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + legacy `tasks` = quiz completions. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
@@ -29,7 +30,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - Pages that read data export `dynamic = "force-dynamic"`.
 - **No hardcoded data** in components — everything comes from the data store. `json/` is seed/default data for migrations and for tables that don't exist yet.
 - Secrets: never read, print or commit `.env*` or `keys/`. Error messages must describe problems (lengths, found/missing markers) without echoing secret values. Credentials come from `DATA_STORE_ID` + `DATA_STORE_KEY_PATH` (credentials JSON), or on hosts without files `DATA_STORE_CLIENT_EMAIL` + `DATA_STORE_PRIVATE_KEY` (older variable names remain supported as fallbacks inside `lib/store.ts`). Document new variables in `.env.example`.
-- The app has **no authentication yet**: server actions are callable by anyone who can reach the site. Don't deploy admin features publicly without adding an auth guard.
+- **Authentication**: one shared team password (`ADMIN_PASSWORD`) + signing key (`AUTH_SECRET`, >= 16 chars). `proxy.ts` redirects everything but `/login`; `lib/auth.ts` (`requireSession`) guards every server action; `lib/auth-core.ts` is dependency-free and unit-tested. Production without those env vars returns 503 (fail closed). Per-user identity/roles are not built yet.
 
 ## Code conventions
 - Server components fetch; client components (`"use client"`) handle interaction. Keep the boundary narrow.
@@ -70,11 +71,43 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 ## Security review rule
 Run the `appsec-review` skill (`.claude/skills/appsec-review/`; automated part: `bash .claude/skills/appsec-review/scan.sh`) **before any release/deploy and whenever you add or change a server action, form field, URL/link/avatar input, CSV import, dependency or security-relevant config**. Every server action is a public endpoint — it must validate all input on the server and (once authentication exists) call the authorization guard first. Keep findings in `docs/security-review-<date>.md`; don't leave known High findings unmentioned in the final summary.
 
+## Security — OWASP Top 10 (2021), mandatory
+| Risk | Rule in this repo |
+|---|---|
+| A01 Access control | Everything except `/login` needs a session (`proxy.ts`). **First line of every exported `"use server"` function: `await requireSession()`** (they are public POST endpoints). Redirect targets go through `safeNext()` |
+| A02 Crypto | Secrets only in env (`ADMIN_PASSWORD`, `AUTH_SECRET`, `GOOGLE_*`). Sessions are HMAC-signed, `HttpOnly`, `SameSite=Lax`, `Secure` in prod. Never hand-roll other crypto |
+| A03 Injection | Validate + trim on the server (`lib/validation.ts`); Sheets writes stay `RAW`; no `dangerouslySetInnerHTML`; links only via `safeUrl` |
+| A04 Design | Fail closed: unconfigured production returns 503. `AUTH_DISABLED=true` is only for a deploy already behind SSO/VPN |
+| A05 Misconfiguration | Headers/CSP live in `next.config.ts`; user-facing errors are generic (`fail()`), details go to `console.error` only. No debug output |
+| A06 Components | `npm audit --omit=dev` before each release; `npm audit fix`, never `--force` without a test pass |
+| A07 Auth | Constant-time compare, throttle, one generic message. Do not add "user not found" style hints |
+| A08 Integrity | Commit the lockfile; no new third-party script/CDN without adding it to the CSP deliberately |
+| A09 Logging | Log failures server-side; never log passwords, tokens or keys |
+| A10 SSRF | Server code never fetches a URL taken from the client |
+
+## Mobile-first & Laws of UX
+Design for **375px first**, then scale up (thumb-reachable primary action, drawers full-width, tables collapse to cards below 768px, no horizontal scroll). Apply the Laws of UX listed under *UI / UX standard* to every new or changed screen and name the law in the PR/feature.md.
+
+## Claude-native workflow (skills in `.claude/skills/`)
+Start every feature, fix or refactor with `/dev-workflow` (brainstorm -> plan -> analysis -> implement -> verify -> validate -> git -> release).
+| Skill | Use it when | Writes |
+|---|---|---|
+| `dev-workflow` | starting any change | gates + `docs/features/<slug>/feature.md` |
+| `feature-checklist` | creating/validating a feature | `docs/features/<slug>/feature.md` (from `feature.md` template) |
+| `code-review-checklist` | before every PR | `docs/reviews/<branch>.md` (from `code-review.md`) |
+| `owasp-audit` | auth/endpoint/dependency/header change, pre-release | `docs/audits/<date>-audit.md` (from `audit.md`) |
+| `release` | commit, PR, version, deploy, rollback | tag + release notes |
+
+Gate commands: `npm run verify` (tsc + tests + build) · `npm test` · `npm run smoke -- <url>` (post-deploy auth/header checks). Never mark work done while a gate is red; report real output.
+
+## Git strategy
+Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agent session may be given a fixed branch: use it). Conventional Commits. Commit only when asked, after `npm run verify`. Docs travel with the code (README + this file). SemVer tags `vX.Y.Z`; details in the `release` skill.
+
 ## Documentation rule (always)
 **Whenever you add a feature or change how a feature works, update `README.md` in the same change** — the features table, tab list, setup/migration/deploy steps, project structure and a one-line entry at the top of the Changelog. Update this file (`CLAUDE.md`) too if the change adds or alters a rule, tab, config location or convention. A change isn't done until the docs match the code.
 
 ## Definition of done
-1. `npx tsc --noEmit` and `npm run build` pass.
+1. `npm run verify` passes (typecheck, tests, build).
 2. Exercised in the browser at desktop and 375px, including empty / error / keyboard-only paths.
 3. Stored data verified after create / edit / delete (remove only the test rows you added; don't re-run `seed:data` casually — it overwrites `users`/`tasks`).
 4. No new hardcoded data, `any`, `@ts-ignore`, or secrets in the diff.
