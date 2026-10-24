@@ -1088,7 +1088,9 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 .login-form { display: grid; gap: 1rem; }
 .login-submit { width: 100%; min-height: var(--touch); }
 .sidebar-signout { width: 100%; min-height: var(--touch); }
-.login-refused { display: grid; gap: 0.5rem; }
+.login-card > * { min-width: 0; } /* grid children must be allowed to shrink or long text overflows the card */
+.login-card .alert { display: block; margin: 0; overflow-wrap: anywhere; }
+.login-card .login-refused { display: grid; gap: 0.5rem; }
 .login-contact { width: 100%; min-height: var(--touch); text-decoration: none; justify-content: center; }
 .login-submit { text-decoration: none; justify-content: center; }
 .sidebar-user { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; min-width: 0; }
