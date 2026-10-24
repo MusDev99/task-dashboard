@@ -57,7 +57,7 @@ npm run smoke -- <url>   # post-deploy auth/header checks
 
 `netlify.toml` already runs `npm run build` with the Next.js plugin. In Netlify set:
 
-- `ADMIN_PASSWORD` and `AUTH_SECRET` (see Sign-in below; without them the site returns 503).
+- `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL`, `CONTACT_WHATSAPP` (see Sign-in below; without the first three the site returns 503).
 - `GOOGLE_SHEET_ID`, `GOOGLE_SERVICE_ACCOUNT_EMAIL` (the key file's `client_email`) and `GOOGLE_PRIVATE_KEY` (its `private_key`), scoped to Functions.
 - `NODE_VERSION=22`.
 - **Don't** set `GOOGLE_SHEET_PATH` (the key file isn't deployed).
@@ -67,17 +67,23 @@ npm run smoke -- <url>   # post-deploy auth/header checks
 - A blank page saying *"Application error: a server-side exception has occurred"* with only a digest means the server threw before rendering. Open Netlify → **Logs → Functions**, find the failing request and read the first error line. Typical causes: `Missing environment variable GOOGLE_PRIVATE_KEY` (not set, or not scoped to Functions), `…is not valid PEM` (key pasted incompletely), `Cannot read service-account key at …` (`GOOGLE_SHEET_PATH` is set on Netlify — remove it), or a Sheets API `403`/`404` (sheet not shared with the service account as Editor, or the wrong `GOOGLE_SHEET_ID`).
 - Since the credentials/sheet problems above no longer crash pages, you'll normally see the page with a red *"Couldn't load … from Google Sheets"* banner instead, and the exact reason in the function logs. Env-var changes only apply to **new deploys**: trigger a redeploy after editing them.
 
-### Sign-in & security (OWASP)
+### Sign-in with Google (SSO) & security (OWASP)
 
-The whole app is private: every page except `/login` needs the team password. Set these in Netlify (Functions scope) or Vercel (Production **and** Preview):
+The whole app is private. Every page except `/login` needs a Google sign-in, and only people with an **active row in the Users tab** (matched by Google account, else by email) get in. Anyone else sees a banner *"<email> isn't registered. Ask the admin to add you"* with a **Contact me on WhatsApp** button. To grant access, add the person under **Users**; to revoke, deactivate them (an open session ends within 8 hours).
+
+**One-time Google setup:** Google Cloud Console → APIs & Services → Credentials → *OAuth client ID* (Web application) → add the authorized redirect URI `https://<your-site>/api/auth/google/callback` (and `http://localhost:3000/api/auth/google/callback` for local testing). Then set these in Netlify (Functions scope) or Vercel (Production **and** Preview):
 
 | Variable | Purpose |
 |---|---|
-| `ADMIN_PASSWORD` | Team password (>= 8 chars) |
-| `AUTH_SECRET` | Random signing key for the 8-hour session cookie (>= 16 chars, e.g. `openssl rand -base64 32`) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | The OAuth client above |
+| `APP_URL` | Public origin, e.g. `https://your-site.netlify.app` (no trailing slash) |
+| `AUTH_SECRET` | Random signing key for the cookies (>= 16 chars, e.g. `openssl rand -base64 32`) |
+| `CONTACT_WHATSAPP` | Your number, digits only with country code (e.g. `60123456789`), for the banner button |
+| `GOOGLE_ALLOWED_DOMAIN` | Optional, e.g. `airasia.com`: only accept that Google Workspace domain |
 | `AUTH_DISABLED=true` | Optional, only if the deploy is already behind SSO/VPN |
+| ~~`ADMIN_PASSWORD`~~ | No longer used: remove it |
 
-**Without `ADMIN_PASSWORD` + `AUTH_SECRET` a production build answers `503` by design (fail closed).** Locally (`npm run dev`) no password is needed. Also in place: security headers and CSP, `HttpOnly` + `SameSite=Lax` (+ `Secure` in prod) cookie, constant-time check, login throttle, `requireSession()` inside every server action, `noindex`. After deploying run `npm run smoke -- https://<your-url>` (all lines ✅). Security audit: `docs/audits/2026-10-24-audit.md`.
+**Without `AUTH_SECRET` + `GOOGLE_CLIENT_ID/SECRET` a production build answers `503` by design (fail closed).** Locally (`npm run dev`) sign-in is off until you set them. Each deploy-preview origin needs its own redirect URI in Google, or test on the main site URL. Also in place: OAuth `state` + `nonce` + PKCE with full ID-token verification, security headers and CSP, `HttpOnly` + `SameSite=Lax` (+ `Secure` in prod) cookie, throttled sign-in start/callback, `requireSession()` inside every server action, `noindex`. If a person's row already has a different `googleId`, they are treated as not registered (clear the cell to re-bind). After deploying run `npm run smoke -- https://<your-url>` (all lines ✅). Tests: `npm test` and `node scripts/e2e/sso.e2e.mjs` (fake Google + Sheets). Security audit: `docs/audits/2026-10-24-audit.md`.
 
 ### AI-driven development workflow
 
@@ -89,14 +95,15 @@ The whole app is private: every page except `/login` needs the team password. Se
 - `app/components/` shared UI (sidebar, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
 - `lib/` server logic: `googleSheets.ts` (Sheets client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), pure helpers (`capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
 - `json/` seed defaults only (settings live in the sheet once migrated)
-- `proxy.ts` auth gate · `lib/auth-core.ts` / `lib/auth.ts` / `lib/auth-actions.ts` session logic · `app/login/`
+- `proxy.ts` auth gate · `lib/auth-core.ts` / `lib/oidc.ts` / `lib/registration.ts` (pure, tested) · `lib/auth.ts` / `lib/auth-actions.ts` · `app/api/auth/google/` (start + callback) · `app/login/`
 - `scripts/` one-off migrations and `smoke.mjs`
 - `tests/` unit tests · `docs/` features, reviews, audits · `.claude/skills/` AI dev workflow
 - `CLAUDE.md` project rules for contributors/AI (architecture, UX standard, definition of done)
 
 ## Changelog
 
-- **Security & workflow**: sign-in (`ADMIN_PASSWORD` + `AUTH_SECRET`; production fails closed with 503 until set), session guard in every server action, security headers/CSP, `npm audit fix` (6 -> 0 vulnerabilities, Next 16.4.3), `.gitignore`, unit tests, `npm run verify` / `smoke`, Claude skills for the AI-driven workflow, OWASP + mobile-first + git rules in CLAUDE.md.
+- **Google SSO**: sign in with Google; only active rows in the Users tab get in, others see a "contact me on WhatsApp" banner. Replaces the shared password (`ADMIN_PASSWORD` is gone; new env vars `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `CONTACT_WHATSAPP`). Everyone signs in again once after deploy.
+- **Security & workflow**: sign-in (production fails closed with 503 until configured), session guard in every server action, security headers/CSP, `npm audit fix` (6 -> 0 vulnerabilities, Next 16.4.3), `.gitignore`, unit tests, `npm run verify` / `smoke`, Claude skills for the AI-driven workflow, OWASP + mobile-first + git rules in CLAUDE.md.
 - **Resilience**: if Google Sheets can't be reached or credentials are wrong, pages now load with an error banner (and log the reason) instead of crashing with a server-side exception. Settings fall back to the built-in defaults while the sheet is unreachable.
 - **Operational Settings**: manage shifts, leave types, locations, roles, task statuses, story points and general options in the app. Location replaces the free-text station code on users; roles are a managed list. The legacy `/task` ("Completions") pages were removed.
 - **Task Management**: `/tasks` with List Tree / Kanban / Calendar, subtasks, labels, links, story points and availability-aware assignment. App renamed to WorkForce Management.
