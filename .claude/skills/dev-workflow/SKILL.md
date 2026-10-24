@@ -2,7 +2,7 @@
 name: dev-workflow
 description: AI-driven development pipeline for this repo (brainstorm, plan, feature analysis, implement, verify, validate, git, release). Use at the START of any feature, fix or refactor, and whenever asked how to approach a change. Orchestrates feature-checklist, code-review-checklist, owasp-audit and release.
 ---
-# 🧭 AI-driven development workflow — WorkForce Management (Next.js 16 + Google Sheets)
+# 🧭 AI-driven development workflow — WorkForce Management (Next.js 16 + managed data store)
 
 Every change walks the 8 gates below. Do not skip a gate; leave the artifact. Stop and ask the owner at 🛑.
 Keep chat output concise: tables, emoji status, roadmaps (owner preference).
@@ -20,7 +20,7 @@ Keep chat output concise: tables, emoji status, roadmaps (owner preference).
 
 ## Gate 5 detail — verify
 **Performance**
-- Sheets API calls per page/action: count them (log in dev). Use the batch helpers (`upsertRowsById`, `deleteRowsByIds`); never loop single-row calls.
+- Data-store calls per page/action: count them (log in dev). Use the batch helpers (`upsertRowsById`, `deleteRowsByIds`); never loop single-row calls.
 - Reads stay `force-dynamic`; do not add uncached full-tab reads inside loops.
 - `npm run build` route table: no route unexpectedly static/dynamic; note the largest client chunk before/after.
 - Interaction budget: Doherty < 400ms (debounce 250ms, optimistic updates, skeletons).
@@ -37,13 +37,13 @@ Keep chat output concise: tables, emoji status, roadmaps (owner preference).
 **Constraints** (re-read `CLAUDE.md`, tick each that applies)
 - OWASP: new endpoint/action is authenticated, input validated server-side, errors are generic, output encoded.
 - Laws of UX applied and noted in the PR; touch targets >= 44px; no horizontal scroll at 375px.
-- Data rules: - Sheet access only via `lib/googleSheets.ts`; every `"use server"` export calls `await requireSession()` first. - Writes use `RAW`; trim + validate on the server (`lib/validation.ts`); deleting order never leaves dangling refs.
+- Data rules: - Data access only via `lib/store.ts`; every `"use server"` export calls `await requireSession()` first. - Writes use `RAW`; trim + validate on the server (`lib/validation.ts`); deleting order never leaves dangling refs.
 - Docs updated in the same change (README, CLAUDE.md if a rule changed).
 
 ## Gate 6 detail — validate
 `tests/*.test.ts` run with `node --test` (Node 22+, no extra deps). Pure logic in `lib/` is the first thing to cover: `validation`, `capacity`, `whereabouts`, `roster-validation`. Server actions are verified through the browser/manual matrix in feature.md.
 - Add a failing test first for every bug fix; keep tests deterministic (inject time/randomness).
-- Browser pass: empty, error, loading, keyboard-only, 375px and desktop. Delete only the test rows you created in the sheet.
+- Browser pass: empty, error, loading, keyboard-only, 375px and desktop. Delete only the test rows you created in the data store.
 
 ## Gate 7/8 — see the `release` skill
 Branch naming, commit style, versioning and rollback live there so this file stays short.

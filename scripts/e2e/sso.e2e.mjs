@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// End-to-end check of the Google SSO flow against a production build, with fake Google + fake Sheets
+// End-to-end check of the Google SSO flow against a production build, with a fake Google and a fake data store
 // (scripts/e2e/fake-google.cjs). Needs `npm run build` first and Playwright (preinstalled in Claude Code
 // cloud sessions; elsewhere: `npm i -D playwright`). Run: node scripts/e2e/sso.e2e.mjs
 import { spawn, execFileSync } from 'node:child_process';
@@ -26,7 +26,7 @@ const server = spawn('npx', ['next', 'start', '-p', String(PORT)], {
   cwd: root,
   env: {
     ...process.env, NODE_OPTIONS: `--require ${join(root, 'scripts/e2e/fake-google.cjs')}`, FAKE_DIR: dir,
-    GOOGLE_SHEET_ID: 'sheet', GOOGLE_SERVICE_ACCOUNT_EMAIL: 'svc@x.iam.gserviceaccount.com', GOOGLE_PRIVATE_KEY: pem,
+    DATA_STORE_ID: 'store', DATA_STORE_CLIENT_EMAIL: 'svc@example.iam.example.com', DATA_STORE_PRIVATE_KEY: pem,
     AUTH_SECRET: 'e2e-secret-e2e-secret', GOOGLE_CLIENT_ID: 'cid.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'csecret',
     APP_URL: BASE, CONTACT_WHATSAPP: '+60 12-345 6789',
   },
@@ -122,7 +122,7 @@ try {
     await ctx.close();
   }
 
-  // 5. Sheets outage must not read as "not registered" (the tab read is cached for 15s)
+  // 5. Data-store outage must not read as "not registered" (the table read is cached for 15s)
   await new Promise((r) => setTimeout(r, 16000));
   writeFileSync(join(dir, 'down'), '1');
   setIdentity({ sub: 'sub-ann', email: 'ann@airasia.com' });
@@ -131,7 +131,7 @@ try {
     await page.goto(`${BASE}/login`);
     await page.click('text=Sign in with Google');
     await page.waitForURL(/\/login\?e=unavailable/, { timeout: 20000 });
-    check('Sheets outage shows "unavailable", not "not registered"', !(await page.locator('.login-refused').count()) && !(await sessionCookie(ctx)));
+    check('Data-store outage shows "unavailable", not "not registered"', !(await page.locator('.login-refused').count()) && !(await sessionCookie(ctx)));
     await ctx.close();
   }
 } finally {

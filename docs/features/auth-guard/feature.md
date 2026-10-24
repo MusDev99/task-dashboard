@@ -27,7 +27,7 @@
 | ID | Given / When / Then | Test |
 |---|---|---|
 | AC-1 | Given no session, when any page is requested, then 307 to `/login?next=...` | smoke + browser |
-| AC-2 | Given no session, when a server action is POSTed, then 401 and no sheet access | smoke |
+| AC-2 | Given no session, when a server action is POSTed, then 401 and no data-store access | smoke |
 | AC-3 | Given a wrong password, when submitting, then a generic error; 6th attempt in 10 min is throttled | `auth-core.test.ts` (limiter) + browser |
 | AC-4 | Given the right password, then an `HttpOnly; SameSite=Lax` (`Secure` in prod) cookie is set and the user lands on `next` | browser |
 | AC-5 | Given `next=https://evil.test` or `//evil`, then redirect falls back to `/` | `auth-core.test.ts` |
@@ -36,14 +36,14 @@
 | AC-8 | `/login` works at 375px with no horizontal scroll, 44px targets | browser |
 
 ### 3.2 Data impact
-None (no sheet changes). New env vars: `ADMIN_PASSWORD`, `AUTH_SECRET`, optional `AUTH_DISABLED`.
+None (no data changes). New env vars: `ADMIN_PASSWORD`, `AUTH_SECRET`, optional `AUTH_DISABLED`.
 
 ### 3.3 Threat model — OWASP Top 10 (2021)
 | Risk | Relevant? | Mitigation / evidence |
 |---|---|---|
 | A01 | ✅ | `proxy.ts` gates all routes; `requireSession()` re-checks in all 18 server-action exports; only same-site `next` paths |
 | A02 | ✅ | HMAC-SHA256 signed expiring token; secrets only in env; `Secure` cookie in prod; HSTS |
-| A03 | ✅ | server validation unchanged (`lib/validation.ts`); Sheets writes stay `RAW`; React escapes output |
+| A03 | ✅ | server validation unchanged (`lib/validation.ts`); Data writes stay `RAW`; React escapes output |
 | A04 | ✅ | fail closed in production when unconfigured; explicit `AUTH_DISABLED` opt-out |
 | A05 | ✅ | CSP, `X-Frame-Options`, nosniff, Referrer-Policy, Permissions-Policy, COOP, `poweredByHeader: false` |
 | A06 | ✅ | `npm audit fix`: 6 -> 0 vulnerabilities (Next 16.1.6 -> 16.4.3) |
@@ -77,7 +77,7 @@ Per-user identity/roles, password reset, MFA, distributed rate limiting (in-memo
 - [x] Env vars in `.env.example`
 
 ## 5. 📏 Verification gates
-- [x] **Performance** — proxy does one HMAC per request (sub-millisecond); no extra Sheets calls; `MigrationNotice` skips the sheet read when signed out
+- [x] **Performance** — proxy does one HMAC per request (sub-millisecond); no extra data-store calls; `MigrationNotice` skips the data store read when signed out
 - [x] **SEO** — private app: `robots: noindex` in `app/layout.tsx`
 - [x] **Quality** — `npm run verify` green (tsc, 6 tests, build); Lighthouse not run (needs network install)
 - [x] **Constraints** — CLAUDE.md updated (auth rule replaces "no authentication yet")

@@ -1,13 +1,13 @@
 # Feature: Google SSO login with registration check
 
-**Status:** ✅ verified (fake Google/Sheets) · ⬜ real Google on a Netlify preview pending · **Branch:** `ccr-842b3a88-ddan6t` (convention: `feat/sso-login`) · **Target version:** 0.3.0
+**Status:** ✅ verified (fake Google + data store) · ⬜ real Google on a Netlify preview pending · **Branch:** `ccr-842b3a88-ddan6t` (convention: `feat/sso-login`) · **Target version:** 0.3.0
 
 ## 1. 🧠 Brainstorm
 **Problem** — one shared password has no per-person identity, can't be revoked for one person, and leaks by being shared. The owner wants SSO, and people who are not registered should be told to contact the owner.
 
 | Option | Pros | Cons | Effort | Pick |
 |---|---|---|---|---|
-| A. Auth.js (NextAuth) Google provider | batteries included | new dependency, Next 16 compatibility risk, adapter for Sheets | M | |
+| A. Auth.js (NextAuth) Google provider | batteries included | new dependency, Next 16 compatibility risk, a data-store adapter | M | |
 | B. Hand-rolled OIDC code flow + PKCE | no dependency, fits `auth-core`, fully unit-testable | we own the security details | M | ✅ |
 | C. Netlify Identity / host SSO | no code | host-specific, no link to the `users` tab | S | |
 
@@ -34,7 +34,7 @@
 | AC-5 | Deactivated user -> banner, no session | e2e |
 | AC-6 | A row bound to a different Google account is not taken over by email | unit |
 | AC-7 | Wrong nonce / forged state / bad signature / wrong aud, iss, exp / unverified email / wrong domain is rejected | unit + e2e |
-| AC-8 | Sheets outage -> "unavailable", never "not registered" | e2e |
+| AC-8 | Data-store outage -> "unavailable", never "not registered" | e2e |
 | AC-9 | Flash and OAuth cookies can't be used as a session; tampered or expired sessions rejected | unit |
 | AC-10 | Open redirect via `next` blocked | unit |
 | AC-11 | 375px: no horizontal scroll, 44px targets | e2e |
@@ -81,7 +81,7 @@ Roles, SSO for tokyo-itinerary, self-registration, other providers.
 - [x] Env vars in `.env.example`
 
 ## 5. 📏 Verification gates
-- [x] **Performance** — one cached Sheets read per sign-in; sidebar reads the cached `users` tab (15 s cache)
+- [x] **Performance** — one cached data-store read per sign-in; sidebar reads the cached `users` tab (15 s cache)
 - [x] **SEO** — private app, `noindex` unchanged
 - [x] **Quality** — `npm run verify` (tsc + 16 unit tests + build)
 - [x] **Constraints** — CLAUDE.md + README updated
@@ -89,7 +89,7 @@ Roles, SSO for tokyo-itinerary, self-registration, other providers.
 ## 6. ✅ Validation
 | AC | Evidence | Result |
 |---|---|---|
-| AC-1..AC-5, AC-8, AC-11 | `node scripts/e2e/sso.e2e.mjs` (18 checks, fake Google + Sheets) | ✅ |
+| AC-1..AC-5, AC-8, AC-11 | `node scripts/e2e/sso.e2e.mjs` (18 checks, fake Google + data store) | ✅ |
 | AC-6, AC-7, AC-9, AC-10 | `tests/*.test.ts` | ✅ |
 
 - [x] Unit tests added and passing

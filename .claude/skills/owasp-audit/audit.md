@@ -11,7 +11,7 @@ Attack surface (routes / endpoints / actions / env vars / outbound hosts), tools
 |---|---|---|---|
 | A01 Broken access control | ✅ / ⚠️ / ❌ | | |
 | A02 Cryptographic failures | | | |
-| A03 Injection (incl. XSS, sheet formula) | | | |
+| A03 Injection (incl. XSS, formula injection) | | | |
 | A04 Insecure design | | | |
 | A05 Security misconfiguration | | | |
 | A06 Vulnerable & outdated components | | `npm audit --omit=dev`: N vulns | |

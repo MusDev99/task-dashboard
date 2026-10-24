@@ -36,7 +36,7 @@ export interface Profile {
   avatar: string | null;
 }
 
-/** Name + avatar for the sidebar. Falls back to the email if the sheet can't be read (never blocks a page). */
+/** Name + avatar for the sidebar. Falls back to the email if the data store can't be read (never blocks a page). */
 export async function currentProfile(): Promise<Profile | null> {
   const who = await currentUser();
   if (!who) return null;

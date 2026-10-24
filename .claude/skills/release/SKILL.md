@@ -18,7 +18,7 @@ description: Git strategy and release management (branching, Conventional Commit
 ## 🏷️ Versioning (SemVer, `package.json`)
 | Change | Bump | Example |
 |---|---|---|
-| Breaking (sheet schema change needing migration, removed route, new required env var) | MAJOR | 1.0.0 -> 2.0.0 |
+| Breaking (data schema change needing migration, removed route, new required env var) | MAJOR | 1.0.0 -> 2.0.0 |
 | New feature, backward compatible | MINOR | 1.2.0 -> 1.3.0 |
 | Fix, security patch, docs | PATCH | 1.2.0 -> 1.2.1 |
 
@@ -39,7 +39,7 @@ A new **required** env var (e.g. auth secrets) is a deploy-time breaking change:
 | 10 | Watch for 30 min | host logs for 5xx / auth failures |
 
 ## ⏪ Rollback
-Netlify → Deploys → pick the last good deploy → **Publish deploy**. Vercel → Deployments → **Promote** / Instant Rollback. Data rollback: sheet tabs have no transactions: before a schema migration duplicate the tab (`users_backup_YYYYMMDD`).
+Netlify → Deploys → pick the last good deploy → **Publish deploy**. Vercel → Deployments → **Promote** / Instant Rollback. Data rollback: data tables have no transactions: before a schema migration duplicate the tab (`users_backup_YYYYMMDD`).
 
 ## Hotfix
 Branch `fix/<name>` from the latest tag, PATCH bump, same checklist with only steps 2, 5-8, then merge back to `main`.

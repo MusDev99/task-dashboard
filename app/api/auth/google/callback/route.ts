@@ -7,7 +7,7 @@ import {
 import { googleEndpoints, verifyIdToken, type Jwks } from "../../../../../lib/oidc";
 import { matchUser } from "../../../../../lib/registration";
 import { readUsers } from "../../../../../lib/actions";
-import { updateRowById } from "../../../../../lib/googleSheets";
+import { updateRowById } from "../../../../../lib/store";
 import { USER_COLUMNS } from "../../../../../lib/schema";
 
 export const dynamic = "force-dynamic";

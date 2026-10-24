@@ -1,4 +1,4 @@
-// Who may sign in: an active row in the `users` tab. Pure, no sheet access, no relative imports.
+// Who may sign in: an active row in the `users` tab. Pure, no data-store access, no relative imports.
 
 export interface RegistrableUser {
   id: string;

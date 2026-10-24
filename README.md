@@ -68,7 +68,7 @@ npm run smoke -- <url>   # post-deploy auth/header checks
 
 ### Sign-in with Google (SSO) & security (OWASP)
 
-The whole app is private. Every page except `/login` needs a Google sign-in, and only people with an **active row in the Users tab** (matched by Google account, else by email) get in. Anyone else sees a banner *"<email> isn't registered. Ask the admin to add you"* with a **Contact me on WhatsApp** button. To grant access, add the person under **Users**; to revoke, deactivate them (an open session ends within 8 hours).
+The whole app is private. Every page except `/login` needs a Google sign-in, and only people with an **active row in the Users table** (matched by Google account, else by email) get in. Anyone else sees a banner *"<email> isn't registered. Ask the admin to add you"* with a **Contact me on WhatsApp** button. To grant access, add the person under **Users**; to revoke, deactivate them (an open session ends within 8 hours).
 
 **One-time Google setup:** Google Cloud Console → APIs & Services → Credentials → *OAuth client ID* (Web application) → add the authorized redirect URI `https://<your-site>/api/auth/google/callback` (and `http://localhost:3000/api/auth/google/callback` for local testing). Then set these in Netlify (Functions scope) or Vercel (Production **and** Preview):
 
@@ -82,7 +82,7 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 | `AUTH_DISABLED=true` | Optional, only if the deploy is already behind SSO/VPN |
 | ~~`ADMIN_PASSWORD`~~ | No longer used: remove it |
 
-**Without `AUTH_SECRET` + `GOOGLE_CLIENT_ID/SECRET` a production build answers `503` by design (fail closed).** Locally (`npm run dev`) sign-in is off until you set them. Each deploy-preview origin needs its own redirect URI in Google, or test on the main site URL. Also in place: OAuth `state` + `nonce` + PKCE with full ID-token verification, security headers and CSP, `HttpOnly` + `SameSite=Lax` (+ `Secure` in prod) cookie, throttled sign-in start/callback, `requireSession()` inside every server action, `noindex`. If a person's row already has a different `googleId`, they are treated as not registered (clear the cell to re-bind). After deploying run `npm run smoke -- https://<your-url>` (all lines ✅). Tests: `npm test` and `node scripts/e2e/sso.e2e.mjs` (fake Google + Sheets). Security audit: `docs/audits/2026-10-24-audit.md`.
+**Without `AUTH_SECRET` + `GOOGLE_CLIENT_ID/SECRET` a production build answers `503` by design (fail closed).** Locally (`npm run dev`) sign-in is off until you set them. Each deploy-preview origin needs its own redirect URI in Google, or test on the main site URL. Also in place: OAuth `state` + `nonce` + PKCE with full ID-token verification, security headers and CSP, `HttpOnly` + `SameSite=Lax` (+ `Secure` in prod) cookie, throttled sign-in start/callback, `requireSession()` inside every server action, `noindex`. If a person's row already has a different `googleId`, they are treated as not registered (clear the cell to re-bind). After deploying run `npm run smoke -- https://<your-url>` (all lines ✅). Tests: `npm test` and `node scripts/e2e/sso.e2e.mjs` (fake Google + data store). Security audit: `docs/audits/2026-10-24-audit.md`.
 
 ### AI-driven development workflow
 
@@ -106,7 +106,7 @@ Run the project's security-review skill before releases and after adding a serve
 
 ## Changelog
 
-- **Google SSO**: sign in with Google; only active rows in the Users table get in, others see a "contact me on WhatsApp" banner. Replaces the shared password (`ADMIN_PASSWORD` is gone; new env vars `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `CONTACT_WHATSAPP`). Everyone signs in again once after deploy.
+- **Google SSO**: sign in with Google; only active rows in the Users tablele get in, others see a "contact me on WhatsApp" banner. Replaces the shared password (`ADMIN_PASSWORD` is gone; new env vars `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `CONTACT_WHATSAPP`). Everyone signs in again once after deploy.
 - **Security & workflow**: sign-in (production fails closed with 503 until configured), session guard in every server action, security headers/CSP, `npm audit fix` (6 -> 0 vulnerabilities, Next 16.4.3), `.gitignore`, unit tests, `npm run verify` / `smoke`, Claude skills for the AI-driven workflow, OWASP + mobile-first + git rules in CLAUDE.md.
 - **Security review**: added the `appsec-review` skill and a first review report (`docs/security-review-2026-10-22.md`): top open items are no authentication, vulnerable dependencies and staff data in the repo.
 - **Confidentiality**: the underlying data store is no longer named anywhere in the UI, messages or docs. Configuration variables are now `DATA_STORE_*` (the previous names still work), the seed script is `npm run seed:data`, and the client module is `lib/store.ts`.

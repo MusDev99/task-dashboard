@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Sign in · WorkForce Management" };
 export const dynamic = "force-dynamic";
 
 const MESSAGES: Record<string, string> = {
-  unavailable: "We couldn't check your registration right now (the sheet is unreachable). Please try again in a minute.",
+  unavailable: "We couldn't check your registration right now (the data store is unreachable). Please try again in a minute.",
   denied: "Sign-in was cancelled. Choose your Google account to continue.",
   domain: "That Google account isn't from an allowed organisation. Use your work account.",
   throttled: "Too many attempts. Please wait a few minutes and try again.",

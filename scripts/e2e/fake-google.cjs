@@ -1,7 +1,7 @@
-// Test-only preload (node --require): stands in for Google's token/JWKS endpoints and the Sheets API so the
+// Test-only preload (node --require): stands in for Google's token/JWKS endpoints and the data-store API so the
 // SSO flow can be exercised end to end without credentials. State is exchanged through files in $FAKE_DIR:
 //   identity.json {sub,email}  who the fake Google authenticates   nonce.txt  nonce captured at "authorize"
-//   users.json {values:[[...]]}  the users tab                     down  (file exists) = Sheets returns 403
+//   users.json {values:[[...]]}  the users tablele                     down  (file exists) = data store returns 403
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -35,10 +35,11 @@ globalThis.fetch = async (input, init = {}) => {
       if (!form.get('code_verifier') || form.get('client_secret') !== process.env.GOOGLE_CLIENT_SECRET) return json({ error: 'invalid_grant' }, 400);
       return json({ id_token: mintIdToken(), access_token: 'user-token', expires_in: 3600 });
     }
-    return json({ access_token: 'service-token', expires_in: 3600 }); // service-account JWT grant for Sheets
+    return json({ access_token: 'service-token', expires_in: 3600 }); // service-account JWT grant for the data store
   }
   if (url.host === 'www.googleapis.com' && url.pathname === '/oauth2/v3/certs') return json({ keys: [jwk] });
-  if (url.host === 'sheets.googleapis.com') {
+  // Anything else on *.googleapis.com is the data-store API (its host is configured inside lib/store.ts).
+  if (url.host.endsWith('.googleapis.com') && url.host !== 'oauth2.googleapis.com' && url.host !== 'www.googleapis.com') {
     if (fs.existsSync(file('down'))) return json({ error: { message: 'forbidden' } }, 403);
     const m = decodeURIComponent(url.pathname).match(/\/values\/([^!:/]+)(?:!A(\d+))?/);
     const tab = m && m[1];

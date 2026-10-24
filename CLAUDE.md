@@ -7,7 +7,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - `npm run seed:data` — seeds the `users` and `tasks` tables from `json/` (**overwrites them**; also resets any CRUD changes; does not touch `roster` or settings tables)
 - `npm run migrate:settings` — idempotent: seeds settings tables from `json/` if missing, backs up `users`, converts `stationCode` → `locationId`, creates roles from role ids in use
 - `npx tsc --noEmit` — typecheck (ESLint config is currently broken; don't rely on `next lint`)
-- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + Sheets (needs a build and Playwright)
+- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + data store (needs a build and Playwright)
 
 ## Data rules
 - Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + legacy `tasks` = quiz completions. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
@@ -66,17 +66,17 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 **Responsive**: design for 375px as well as desktop. Tables collapse to cards below 768px, drawers go full-width, no horizontal page scroll.
 
 ## Confidentiality rule (always)
-**Never name or hint at the underlying data store / its vendor** in: UI text, error or toast messages shown to users, `README.md`, other docs, code comments, commit messages, PR descriptions, or replies to the user. Say "the data store" / "tables" / "the system". Don't put real service-account emails, project ids or ids of the store in tracked files (`.env.example` uses placeholders). Configuration variables are `DATA_STORE_*`; the seed script is `npm run seed:data`; all access goes through `lib/store.ts`. Unavoidable exceptions: that module's endpoint addresses and legacy variable fallbacks (server-only, never sent to the browser), the Google account id on users (`googleId`), the avatar image host in `next.config.ts`, and the font loader.
+**Never name or hint at the underlying data store / its vendor** in: UI text, error or toast messages shown to users, `README.md`, other docs, code comments, commit messages, PR descriptions, or replies to the user. Say "the data store" / "tables" / "the system". Don't put real service-account emails, project ids or ids of the store in tracked files (`.env.example` uses placeholders). Configuration variables are `DATA_STORE_*`; the seed script is `npm run seed:data`; all access goes through `lib/store.ts`. Unavoidable exceptions: that module's endpoint addresses and legacy variable fallbacks (server-only, never sent to the browser), the Google account id on users (`googleId`), **Google sign-in** (an identity provider, named by design: the button text, `GOOGLE_CLIENT_ID/SECRET`, the OAuth endpoints in `lib/oidc.ts`, `scripts/e2e/fake-google.cjs` and the setup steps in `README.md`), the avatar image host in `next.config.ts`, and the font loader.
 
 ## Security review rule
-Run the `appsec-review` skill (`.claude/skills/appsec-review/`; automated part: `bash .claude/skills/appsec-review/scan.sh`) **before any release/deploy and whenever you add or change a server action, form field, URL/link/avatar input, CSV import, dependency or security-relevant config**. Every server action is a public endpoint — it must validate all input on the server and (once authentication exists) call the authorization guard first. Keep findings in `docs/security-review-<date>.md`; don't leave known High findings unmentioned in the final summary.
+Run the `appsec-review` skill (`.claude/skills/appsec-review/`; automated part: `bash .claude/skills/appsec-review/scan.sh`) **before any release/deploy and whenever you add or change a server action, form field, URL/link/avatar input, CSV import, dependency or security-relevant config**. Every server action is a public endpoint — it must validate all input on the server and call `await requireSession()` first. Keep findings in `docs/security-review-<date>.md`; don't leave known High findings unmentioned in the final summary.
 
 ## Security — OWASP Top 10 (2021), mandatory
 | Risk | Rule in this repo |
 |---|---|
 | A01 Access control | Everything except `/login` and `/api/auth/*` needs a session (`proxy.ts`); only registered, active `users` rows can sign in. **First line of every exported `"use server"` function: `await requireSession()`** (they are public POST endpoints). Redirect targets go through `safeNext()` |
 | A02 Crypto | Secrets only in env (`AUTH_SECRET`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_*`). Sessions are HMAC-signed, `HttpOnly`, `SameSite=Lax`, `Secure` in prod. OAuth uses `state` + `nonce` + PKCE and verifies the ID token signature, `iss`, `aud`, `exp`, `email_verified`. Never hand-roll other crypto |
-| A03 Injection | Validate + trim on the server (`lib/validation.ts`); Sheets writes stay `RAW`; no `dangerouslySetInnerHTML`; links only via `safeUrl` |
+| A03 Injection | Validate + trim on the server (`lib/validation.ts`); Data writes stay `RAW`; no `dangerouslySetInnerHTML`; links only via `safeUrl` |
 | A04 Design | Fail closed: unconfigured production returns 503. `AUTH_DISABLED=true` is only for a deploy already behind SSO/VPN |
 | A05 Misconfiguration | Headers/CSP live in `next.config.ts`; user-facing errors are generic (`fail()`), details go to `console.error` only. No debug output |
 | A06 Components | `npm audit --omit=dev` before each release; `npm audit fix`, never `--force` without a test pass |
