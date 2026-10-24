@@ -34,7 +34,6 @@ export interface EntityDef {
 }
 
 /** Colour presets offered next to the native picker (any #rrggbb is allowed). */
-export const COLOR_PRESETS = ["#6c63ff", "#9b5de5", "#f15bb5", "#ff6b6b", "#ff9f1c", "#ffc233", "#00c9a7", "#3b9eff", "#8b8da3"];
 
 const Chip = ({ text, color }: { text: string; color: string }) => (
   <span className="code-chip settings-chip" style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)`, borderColor: `color-mix(in srgb, ${color} 45%, transparent)` }}>{text}</span>

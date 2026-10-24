@@ -26,3 +26,7 @@ export const ROLE_COLUMNS = ["id", "name", "description", "active"] as const;
 export const TASK_STATUS_COLUMNS = ["key", "label", "color", "open", "isDefault", "isDone", "active", "sortOrder"] as const;
 export const STORY_POINT_COLUMNS = ["value", "complexity", "label", "active"] as const;
 export const APP_SETTING_COLUMNS = ["key", "value"] as const;
+
+// Teams (many-to-many with users through team_members). Membership id = `${teamId}_${userId}`, so upserts can't duplicate.
+export const TEAM_COLUMNS = ["id", "name", "description", "leadId", "color", "createdAt", "updatedAt"] as const;
+export const TEAM_MEMBER_COLUMNS = ["id", "teamId", "userId", "addedAt"] as const;

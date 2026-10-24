@@ -1,8 +1,9 @@
 import { readTable, type Cell } from "./store";
-import { USER_COLUMNS, TASK_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
+import { USER_COLUMNS, TASK_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
 import type { User, TaskCompletion, Difficulty } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
+import type { Team, TeamMember } from "../app/teams/types";
 import { MONTH_RE } from "./roster-dates";
 
 // Tables: "users" and "tasks" (see lib/schema.ts).
@@ -180,5 +181,47 @@ export async function loadWorkTasks(): Promise<{ tasks: WorkTask[]; error: boole
     if (String(error).includes("Unable to parse range")) return { tasks: [], error: false };
     console.error("Error loading work tasks:", error);
     return { tasks: [], error: true };
+  }
+}
+
+// ─── Teams ──────────────────────────────────────────────────────────────────
+
+/** Reads a tab that is created on first write: a missing tab reads as empty. */
+async function readOptionalTable(tab: string, columns: readonly string[]): Promise<Record<string, Cell>[]> {
+  try {
+    const rows = await readTable(tab);
+    assertColumns(tab, rows, columns);
+    return rows;
+  } catch (error) {
+    if (String(error).includes("Unable to parse range")) return [];
+    throw error;
+  }
+}
+
+function toTeam(r: Record<string, Cell>): Team {
+  return {
+    id: String(r.id),
+    name: String(r.name ?? ""),
+    description: String(r.description ?? ""),
+    leadId: str(r.leadId),
+    // Hand-edited cells may hold anything: only a #rrggbb value reaches the UI.
+    color: /^#[0-9a-f]{6}$/.test(String(r.color ?? "").toLowerCase()) ? String(r.color).toLowerCase() : "#8b8da3",
+    createdAt: String(r.createdAt ?? ""),
+    updatedAt: String(r.updatedAt ?? ""),
+  };
+}
+
+function toTeamMember(r: Record<string, Cell>): TeamMember {
+  return { id: String(r.id), teamId: String(r.teamId ?? ""), userId: String(r.userId ?? ""), addedAt: String(r.addedAt ?? "") };
+}
+
+/** All teams + memberships, with a load-failure flag. */
+export async function loadTeams(): Promise<{ teams: Team[]; members: TeamMember[]; error: boolean }> {
+  try {
+    const [teams, members] = await Promise.all([readOptionalTable("teams", TEAM_COLUMNS), readOptionalTable("team_members", TEAM_MEMBER_COLUMNS)]);
+    return { teams: teams.map(toTeam), members: members.map(toTeamMember).filter((m) => m.teamId && m.userId), error: false };
+  } catch (error) {
+    console.error("Error loading teams:", error);
+    return { teams: [], members: [], error: true };
   }
 }

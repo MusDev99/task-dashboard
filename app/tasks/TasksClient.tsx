@@ -18,6 +18,7 @@ import CalendarView from "./CalendarView";
 import TaskDrawer, { type DrawerTarget } from "./TaskDrawer";
 import type { TaskActions } from "./TaskMenu";
 import type { Person, WorkTask } from "./types";
+import type { TeamOption } from "../teams/types";
 
 type View = "list" | "kanban" | "calendar";
 type Change = { type: "status"; id: string; status: string } | { type: "delete"; ids: string[] };
@@ -25,6 +26,7 @@ type Change = { type: "status"; id: string; status: string } | { type: "delete";
 interface Props {
   tasks: WorkTask[];
   people: Person[];
+  teams: TeamOption[];
   config: TaskConfig;
   today: string;
   loadError: boolean;
@@ -32,7 +34,7 @@ interface Props {
 
 const oneOf = <T extends string>(v: string | null, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 
-export default function TasksClient({ tasks, people, config, today, loadError }: Props) {
+export default function TasksClient({ tasks, people, teams, config, today, loadError }: Props) {
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
   const [, startTransition] = useTransition();
@@ -50,6 +52,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
   const [search, setSearch] = useState(q);
   const [status, setStatus] = useState<string>(oneOf(params.get("status"), statusKeys, "all"));
   const [assignee, setAssignee] = useState(params.get("assignee") ?? "");
+  const [team, setTeam] = useState(teams.some((t) => t.id === params.get("team")) ? params.get("team")! : "");
   const [label, setLabel] = useState(params.get("label") ?? "");
   const [view, setView] = useState<View>(oneOf(params.get("view"), ["list", "kanban", "calendar"] as const, "kanban"));
   const [sort, setSort] = useState<TaskSort>(() => {
@@ -73,6 +76,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
     if (search) next.set("q", search);
     if (status !== "all") next.set("status", status);
     if (assignee) next.set("assignee", assignee);
+    if (team) next.set("team", team);
     if (label) next.set("label", label);
     if (view !== "kanban") next.set("view", view);
     if (sort.key !== "code" || sort.dir !== "desc") next.set("sort", `${sort.key}:${sort.dir}`);
@@ -81,7 +85,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
     if (view === "calendar" && month !== today.slice(0, 7)) next.set("month", month);
     const qs = next.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-  }, [search, status, assignee, label, view, sort, size, page, month, today]);
+  }, [search, status, assignee, team, label, view, sort, size, page, month, today]);
 
   // ── Derived data ──
   const peopleMap = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
@@ -94,17 +98,20 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
   const top = useMemo(() => items.filter((t) => !t.parentId), [items]);
   const allLabels = useMemo(() => [...new Set(items.flatMap((t) => t.labels))].sort((a, b) => a.localeCompare(b)), [items]);
 
+  const teamMembers = useMemo(() => (team ? new Set(teams.find((x) => x.id === team)?.memberIds ?? []) : null), [teams, team]);
   const baseFiltered = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return top.filter((t) => {
       const subs = subtasksOf.get(t.id) ?? [];
+      // Team = the task or one of its subtasks is assigned to a member (tasks never store a team).
+      if (teamMembers && ![t, ...subs].some((x) => x.assigneeId && teamMembers.has(x.assigneeId))) return false;
       if (assignee === "unassigned" ? !!t.assigneeId : assignee && t.assigneeId !== assignee && !subs.some((s) => s.assigneeId === assignee)) return false;
       if (label && !t.labels.includes(label) && !subs.some((s) => s.labels.includes(label))) return false;
       if (!needle) return true;
       const hay = [t.code, t.title, t.description, ...t.labels, ...subs.flatMap((s) => [s.code, s.title])];
       return hay.some((v) => v.toLowerCase().includes(needle));
     });
-  }, [top, subtasksOf, search, assignee, label]);
+  }, [top, subtasksOf, search, assignee, label, teamMembers]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: baseFiltered.length };
@@ -130,7 +137,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
   const safePage = Math.min(page, pageCount);
   const visible = filtered.slice((safePage - 1) * size, safePage * size);
   const calendarItems = useMemo(() => filtered.flatMap((t) => [t, ...(subtasksOf.get(t.id) ?? [])]), [filtered, subtasksOf]);
-  const hasFilters = !!(search || assignee || label || status !== "all");
+  const hasFilters = !!(search || assignee || team || label || status !== "all");
 
   // ── Mutations ──
   const track = useCallback(async <T,>(fn: () => Promise<T>) => {
@@ -182,7 +189,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
 
   const deletingSubs = deleting ? (subtasksOf.get(deleting.id) ?? []).length : 0;
   const pickView = (v: View) => { setView(v); setPage(1); };
-  const clearFilters = () => { setQ(""); setSearch(""); setStatus("all"); setAssignee(""); setLabel(""); setPage(1); };
+  const clearFilters = () => { setQ(""); setSearch(""); setStatus("all"); setAssignee(""); setTeam(""); setLabel(""); setPage(1); };
 
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
@@ -211,6 +218,12 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
           <option value="unassigned">Unassigned</option>
           {people.filter((p) => p.isActive).map((p) => <option key={p.id} value={p.id}>{displayName(p.name)}</option>)}
         </select>
+        {teams.length > 0 && (
+          <select className="select" aria-label="Filter by team" value={team} onChange={(e) => { setTeam(e.target.value); setPage(1); }}>
+            <option value="">All teams</option>
+            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        )}
         <select className="select" aria-label="Filter by label" value={label} onChange={(e) => { setLabel(e.target.value); setPage(1); }}>
           <option value="">All labels</option>
           {allLabels.map((l) => <option key={l} value={l}>{l}</option>)}
@@ -264,6 +277,7 @@ export default function TasksClient({ tasks, people, config, today, loadError }:
           target={drawer}
           tasks={items}
           people={people}
+          teams={teams}
           config={config}
           onClose={() => setDrawer(null)}
           onNavigate={setDrawer}

@@ -12,6 +12,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | **Roster** | `/roster` | Month grid of every active person. Click or drag cells to assign a shift or leave, `+` above a date to assign everyone, **Clear schedule** to bulk-remove, **Export / Upload CSV**. One record per person per day. |
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views. Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. |
 | **Users** | `/users` | Admin table/grid with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
+| **Teams** | `/teams` | Group registered users into teams (name, description, colour, optional lead). A person can be in several teams. Cards (lead + members) or table with stats, search, member filter, sorting and pagination; add/edit in a two-step drawer (details → members, crown to pick the lead). Teams power the **team filter** on Roster and Tasks and narrow the task assignee picker (tasks still have one personal assignee, never a team). |
 | **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
 | **Leaderboard** | `/leaderboard` | Legacy merit-score ranking. |
 
@@ -30,6 +31,8 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | `tasks` | Legacy quiz completions (leaderboard) | `seed:data` |
 | `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
+| `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
+| `team_members` | One row per team member (`id = teamId_userId`) | automatically on first team |
 | `roster_codes` | Work shifts + leave types | `migrate:settings` or first Settings save |
 | `locations`, `roles` | Managed lists used by users | `migrate:settings` or first Settings save |
 | `task_statuses`, `story_points`, `app_settings` | Task workflow + general settings | `migrate:settings` or first Settings save |
@@ -90,9 +93,9 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ## Project structure
 
-- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `settings/`, `whereabouts/`, `leaderboard/`
+- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `teams/`, `settings/`, `whereabouts/`, `leaderboard/`
 - `app/components/` shared UI (sidebar, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
-- `lib/` server logic: `store.ts` (data-store client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), pure helpers (`capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
+- `lib/` server logic: `store.ts` (data-store client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), pure helpers (`teams.ts`, `team-validation.ts`, `capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
 - `json/` seed defaults only (settings live in the data store once migrated)
 - `scripts/` one-off seed and migration scripts
 - `.claude/skills/appsec-review/` security-review skill (`SKILL.md` checklist + `scan.sh` automated scan); `docs/` review reports
@@ -102,10 +105,11 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ## Security
 
-Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-22.md`).
+Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-24.md`).
 
 ## Changelog
 
+- **v0.2.0 · Teams**: new `/teams` module to create teams from registered users (many teams per person, optional lead, colour), plus a team filter on Roster and Tasks and a team selector in the task assignee picker. New tables `teams` and `team_members` are created on first use; deleting a user removes their memberships.
 - **Login redesign**: split-screen sign-in (brand and three feature points on desktop, compact on mobile) with a Google-branded button, "Redirecting…" feedback, and refusal/error banners kept inside the card.
 - **Google SSO**: sign in with Google; only active rows in the Users tablele get in, others see a "contact me on WhatsApp" banner. Replaces the shared password (`ADMIN_PASSWORD` is gone; new env vars `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `CONTACT_WHATSAPP`). Everyone signs in again once after deploy.
 - **Security & workflow**: sign-in (production fails closed with 503 until configured), session guard in every server action, security headers/CSP, `npm audit fix` (6 -> 0 vulnerabilities, Next 16.4.3), `.gitignore`, unit tests, `npm run verify` / `smoke`, Claude skills for the AI-driven workflow, OWASP + mobile-first + git rules in CLAUDE.md.
