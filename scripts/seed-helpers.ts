@@ -1,6 +1,6 @@
-// Shared by migrate-settings.ts and migrate-to-sheets.ts. Plain Node (no Next), so JSON is read from disk.
+// Shared by migrate-settings.ts and seed-data.ts. Plain Node (no Next), so JSON is read from disk.
 import { readFileSync } from "node:fs";
-import { appendRow, ensureTab, readTable, writeTable, type Cell } from "../lib/googleSheets.ts";
+import { appendRow, ensureTab, readTable, writeTable, type Cell } from "../lib/store.ts";
 import {
   APP_SETTING_COLUMNS, LOCATION_COLUMNS, ROLE_COLUMNS, ROSTER_CODE_COLUMNS, STORY_POINT_COLUMNS, TASK_STATUS_COLUMNS,
 } from "../lib/schema.ts";

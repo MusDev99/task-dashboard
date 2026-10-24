@@ -44,7 +44,7 @@ export default function SettingsClient({ general, records, usage, loadError }: P
         </div>
       </div>
 
-      {loadError && <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load settings from Google Sheets. Showing defaults; check the connection, then refresh.</div>}
+      {loadError && <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load settings. Showing defaults. Please refresh; if it keeps happening, contact an administrator.</div>}
 
       <div className="settings-layout">
         <nav className="settings-nav" aria-label="Settings sections">

@@ -4,7 +4,7 @@ import { getUserById, getUsers, getTasks } from "../../../lib/actions";
 import { getLocations, getRoles } from "../../../lib/settings";
 import { calculateMeritScore, calculateAvgCorrectness, calculateTaskScore } from "../../lib/merit";
 
-// Data comes from Google Sheets; always render per request.
+// Data is read fresh on every request.
 export const dynamic = "force-dynamic";
 
 const avatarColors = [

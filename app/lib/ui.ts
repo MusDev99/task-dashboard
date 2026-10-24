@@ -11,7 +11,7 @@ export const avatarColors = [
   "linear-gradient(135deg, #a29bfe, #6c5ce7)",
 ];
 
-/** Names in the sheet often end with " -"; strip it for display. */
+/** Names often end with " -"; strip it for display. */
 export const displayName = (name: string) => name.replace(/\s-\s*$/, "").trim() || name;
 
 export const initial = (name: string) => displayName(name).charAt(0).toUpperCase() || "?";

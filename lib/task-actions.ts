@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { appendRow, deleteRowsByIds, ensureTab, updateRowById } from "./googleSheets";
+import { appendRow, deleteRowsByIds, ensureTab, updateRowById } from "./store";
 import { getRoster, getUsers, loadWorkTasks } from "./actions";
 import { getShiftConfig } from "./shifts";
 import { getTaskConfig } from "./task-config";
@@ -9,7 +9,7 @@ import { WORK_TASK_COLUMNS } from "./schema";
 import { cleanTaskInput, validateTask, type TaskErrors } from "./task-validation";
 import { availability, monthsBetween, taskWindow, workload } from "./capacity";
 import type { Availability, TaskInput, WorkTask } from "../app/tasks/types";
-import type { Cell } from "./googleSheets";
+import type { Cell } from "./store";
 
 export type TaskResult<T> = { ok: true; data: T } | { ok: false; errors?: TaskErrors; message?: string };
 
@@ -20,7 +20,7 @@ const refresh = () => {
 };
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);
-  return { ok: false, message: "Couldn't reach Google Sheets. Please try again." };
+  return { ok: false, message: "Couldn't save right now. Please try again." };
 };
 
 const toRow = (t: WorkTask): Record<string, Cell> => ({

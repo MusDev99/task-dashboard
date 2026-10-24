@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "migrate:sheets": "node --env-file=.env scripts/migrate-to-sheets.ts",
+    "seed:data": "node --env-file=.env scripts/seed-data.ts",
     "migrate:settings": "node --env-file=.env scripts/migrate-settings.ts"
   },
   "dependencies": {

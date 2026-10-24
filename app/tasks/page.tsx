@@ -5,7 +5,7 @@ import { todayIn } from "../../lib/roster-dates";
 import TasksClient from "./TasksClient";
 import type { Person } from "./types";
 
-// Data comes from Google Sheets; always render per request.
+// Data is read fresh on every request.
 export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {

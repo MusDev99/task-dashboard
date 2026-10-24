@@ -268,7 +268,7 @@ export default function RosterClient({ resources, entries, config, month, today,
       </div>
 
       {loadError && (
-        <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load the roster from Google Sheets. Check the connection and sharing settings, then refresh.</div>
+        <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load the roster. Please refresh. If it keeps happening, contact an administrator.</div>
       )}
 
       <div className="toolbar">

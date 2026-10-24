@@ -9,7 +9,7 @@ import WhereaboutsSection from "./whereabouts/WhereaboutsSection";
 import { User, TaskCompletion } from "./lib/types";
 import { calculateMeritScore, calculateAvgCorrectness } from "./lib/merit";
 
-// Data comes from Google Sheets; always render per request.
+// Data is read fresh on every request.
 export const dynamic = "force-dynamic";
 
 function getLeaderboard(users: User[], tasks: TaskCompletion[]) {

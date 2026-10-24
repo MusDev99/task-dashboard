@@ -60,7 +60,7 @@ export async function getTaskConfig(): Promise<TaskConfig> {
         .sort((a, b) => a.sortOrder - b.sortOrder)
     : DEFAULT_TASK_STATUSES;
   if (statuses.length === 0) statuses = DEFAULT_TASK_STATUSES;
-  // Guarantee a default + done status even if the sheet was hand-edited.
+  // Guarantee a default + done status even if the data was hand-edited.
   if (!statuses.some((s) => s.isDefault)) statuses = statuses.map((s, i) => ({ ...s, isDefault: i === 0 }));
   if (!statuses.some((s) => s.isDone)) statuses = statuses.map((s) => ({ ...s, isDone: s.key === (statuses.find((x) => !x.open) ?? statuses[statuses.length - 1]).key }));
 

@@ -42,7 +42,7 @@ export function shiftHours(start: string, end: string): number | null {
   return Math.round((mins / 60) * 100) / 100;
 }
 
-/** Normalise form input into the row stored in the sheet (be liberal in what we accept). */
+/** Normalise form input into the stored row (be liberal in what we accept). */
 export function cleanEntity(kind: EntityKind, raw: Record<string, unknown>): SettingRecord {
   switch (kind) {
     case "shift": {

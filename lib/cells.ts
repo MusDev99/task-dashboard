@@ -1,6 +1,6 @@
-import type { Cell } from "./googleSheets";
+import type { Cell } from "./store";
 
-// Small, forgiving converters for sheet cells (people may hand-edit the sheet).
+// Small, forgiving converters for stored cells (values may have been edited by hand).
 export const text = (v: Cell): string => (v == null ? "" : String(v).trim());
 export const optText = (v: Cell): string | null => text(v) || null;
 export const num = (v: Cell, fallback = 0): number => {
@@ -14,5 +14,5 @@ export const bool = (v: Cell, fallback = false): boolean => {
   return ["true", "1", "yes", "y"].includes(String(v).trim().toLowerCase());
 };
 
-/** True when Sheets says the tab doesn't exist yet. */
+/** True when the store says the table doesn't exist yet. */
 export const isMissingTab = (e: unknown) => String(e).includes("Unable to parse range");

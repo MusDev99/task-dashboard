@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { appendRow, updateRowById, deleteRowsWhere, readTable, upsertRowsById } from "./googleSheets";
+import { appendRow, updateRowById, deleteRowsWhere, readTable, upsertRowsById } from "./store";
 import { getUsers } from "./actions";
 import { USER_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
 import { cleanUserInput, validateUserInput, type FieldErrors, type UserInput, type UserRefs } from "./validation";
@@ -12,7 +12,7 @@ export type ActionResult<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; errors?: FieldErrors; message?: string };
 
-// Same format as the existing sheet data: "2026-01-21 06:55:00.915" (UTC).
+// Same format as the existing data: "2026-01-21 06:55:00.915" (UTC).
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 
 function refresh() {
@@ -29,7 +29,7 @@ async function userRefs(): Promise<UserRefs> {
 
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);
-  return { ok: false, message: "Couldn't reach Google Sheets. Please try again." };
+  return { ok: false, message: "Couldn't save right now. Please try again." };
 };
 
 export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<User>> {

@@ -5,7 +5,7 @@ import { getUsageCounts } from "../../lib/settings-actions";
 import type { EntityKind, SettingRecord } from "../../lib/settings-validation";
 import SettingsClient from "./SettingsClient";
 
-// Settings live in Google Sheets; always render per request.
+// Settings are read fresh on every request.
 export const dynamic = "force-dynamic";
 
 const empty: Record<EntityKind, Record<string, number>> = { shift: {}, leave: {}, location: {}, role: {}, status: {}, point: {} };

@@ -155,7 +155,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
 
       {loadError && (
         <div className="alert alert-danger" role="alert">
-          <AlertIcon /> Couldn&apos;t load users from Google Sheets. Check the connection and sharing settings, then refresh.
+          <AlertIcon /> Couldn&apos;t load users. Please refresh. If it keeps happening, contact an administrator.
         </div>
       )}
 
@@ -234,7 +234,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
         <ConfirmDialog title={`Delete ${displayName(deleting.name)}?`} confirmLabel="Delete user" danger pending={pending} onConfirm={confirmDelete} onCancel={() => setDeleting(null)}>
           This permanently removes the user
           {deleting.tasksCompleted > 0 ? ` and their ${deleting.tasksCompleted} completed task${deleting.tasksCompleted === 1 ? "" : "s"}` : ""} from the
-          Google Sheet, and updates the leaderboard. This can&apos;t be undone.
+          the system, and updates the leaderboard. This can&apos;t be undone.
         </ConfirmDialog>
       )}
 

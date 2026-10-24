@@ -1,8 +1,8 @@
-// Readers for operational settings stored in sheet tabs. A missing tab falls back to the
+// Readers for operational settings stored in their own tables. A missing table falls back to the
 // seed defaults in json/, so the app works before `npm run migrate:settings` / first save.
 import shiftDefaults from "../json/shifts.json";
 import taskDefaults from "../json/task-config.json";
-import { readTable, type Cell } from "./googleSheets";
+import { readTable, type Cell } from "./store";
 import { bool, isMissingTab, num, text } from "./cells";
 
 export interface AppSettings {

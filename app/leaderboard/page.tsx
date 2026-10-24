@@ -3,7 +3,7 @@ import { getLocations } from "../../lib/settings";
 import { calculateMeritScore, calculateAvgCorrectness } from "../lib/merit";
 import LeaderboardClient from "./LeaderboardClient";
 
-// Data comes from Google Sheets; always render per request.
+// Data is read fresh on every request.
 export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
