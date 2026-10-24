@@ -9,6 +9,7 @@ import { rosterId, isRealDate } from "./roster-dates";
 import { validateCells, validMonth } from "./roster-validation";
 import type { ActionResult } from "./user-actions";
 import type { CellRef, RosterEntry } from "../app/roster/types";
+import { requireSession } from "./auth";
 
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 const refresh = () => {
@@ -28,6 +29,7 @@ async function context() {
 
 /** Assign one shift/leave code to the given cells (one row per user per day: existing rows are overwritten). */
 export async function setCells(cells: CellRef[], code: string): Promise<ActionResult<{ count: number }>> {
+  await requireSession();
   try {
     const { userIds, config } = await context();
     const error = validateCells(cells, userIds, config, code);
@@ -50,6 +52,7 @@ export async function setCells(cells: CellRef[], code: string): Promise<ActionRe
 
 /** Remove the roster rows for the given cells (empty cell = no row). */
 export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count: number }>> {
+  await requireSession();
   try {
     const { userIds, config } = await context();
     const error = validateCells(cells, userIds, config);
@@ -64,6 +67,7 @@ export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count
 
 /** Bulk clear: every roster row of the given users within one month. */
 export async function clearSchedule(userIds: string[], month: string): Promise<ActionResult<{ count: number }>> {
+  await requireSession();
   try {
     if (!validMonth(month)) return { ok: false, message: "Invalid month." };
     if (!Array.isArray(userIds) || userIds.length === 0) return { ok: false, message: "Select at least one resource." };
@@ -92,6 +96,7 @@ export interface ImportError {
 
 /** Resolve and validate CSV rows. With `apply=false` it only reports what would happen. */
 export async function importRoster(rows: ImportRow[], apply: boolean): Promise<ActionResult<{ count: number; errors: ImportError[] }>> {
+  await requireSession();
   try {
     if (!Array.isArray(rows) || rows.length === 0) return { ok: false, message: "The file has no data rows." };
     if (rows.length > 5000) return { ok: false, message: "Too many rows (max 5,000)." };
@@ -126,6 +131,7 @@ export async function importRoster(rows: ImportRow[], apply: boolean): Promise<A
 
 /** Read-only: one month of roster entries (used by the dashboard when stepping across months). */
 export async function fetchRosterMonth(month: string): Promise<{ entries: RosterEntry[]; error: boolean }> {
+  await requireSession();
   if (!validMonth(month)) return { entries: [], error: true };
   return getRoster(month);
 }

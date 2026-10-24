@@ -10,6 +10,7 @@ import { cleanTaskInput, validateTask, type TaskErrors } from "./task-validation
 import { availability, monthsBetween, taskWindow, workload } from "./capacity";
 import type { Availability, TaskInput, WorkTask } from "../app/tasks/types";
 import type { Cell } from "./store";
+import { requireSession } from "./auth";
 
 export type TaskResult<T> = { ok: true; data: T } | { ok: false; errors?: TaskErrors; message?: string };
 
@@ -43,6 +44,7 @@ function nextCode(tasks: WorkTask[], prefix: string): string {
 }
 
 export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
+  await requireSession();
   try {
     const { users, config, tasks } = await context();
     const input = cleanTaskInput(raw, config);
@@ -59,6 +61,7 @@ export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<Wo
 }
 
 export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
+  await requireSession();
   try {
     const { users, config, tasks } = await context();
     const current = tasks.find((t) => t.id === id);
@@ -78,6 +81,7 @@ export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<T
 }
 
 export async function setTaskStatus(id: string, status: string): Promise<TaskResult<WorkTask>> {
+  await requireSession();
   try {
     const { config, tasks } = await context();
     const current = tasks.find((t) => t.id === id);
@@ -95,6 +99,7 @@ export async function setTaskStatus(id: string, status: string): Promise<TaskRes
 
 /** Deletes a task and its subtasks (subtasks first, so none is ever orphaned). */
 export async function deleteTask(id: string): Promise<TaskResult<{ subtasksDeleted: number }>> {
+  await requireSession();
   try {
     const { tasks } = await context();
     if (!tasks.some((t) => t.id === id)) return { ok: false, message: "This task no longer exists." };
@@ -110,6 +115,7 @@ export async function deleteTask(id: string): Promise<TaskResult<{ subtasksDelet
 
 /** Read-only: availability + workload of every active user for a task window (dates optional). */
 export async function getAssigneeAvailability(start: string | null, due: string | null, excludeTaskId?: string): Promise<Availability[]> {
+  await requireSession();
   const [users, shifts, config, loaded] = await Promise.all([getUsers(), getShiftConfig(), getTaskConfig(), loadWorkTasks()]);
   const window = taskWindow(start, due);
   const roster = window ? (await Promise.all(monthsBetween(window[0], window[1]).map((m) => getRoster(m)))).flatMap((r) => r.entries) : [];

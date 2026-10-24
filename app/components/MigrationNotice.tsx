@@ -1,7 +1,9 @@
 import { readTable } from "../../lib/store";
+import { isAuthed } from "../../lib/auth";
 
-/** Shown app-wide while the users tab still has the pre-Settings `stationCode` column. */
+/** Shown app-wide while the users tablele still has the pre-Settings `stationCode` column. */
 export default async function MigrationNotice() {
+  if (!(await isAuthed())) return null; // never read the data store for signed-out visitors (e.g. on /login)
   let legacy = false;
   try {
     const rows = await readTable("users");
@@ -14,7 +16,7 @@ export default async function MigrationNotice() {
   return (
     <div className="alert alert-danger" role="alert" style={{ maxWidth: 1400, margin: "0 auto 1rem" }}>
       The data still uses station codes. Run <code>npm run migrate:settings</code> once to move them to Locations
-      (a backup of the users tab is made first).
+      (a backup of the users tablele is made first).
     </div>
   );
 }
