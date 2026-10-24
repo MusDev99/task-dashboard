@@ -492,6 +492,9 @@ body {
 :root {
   --danger: #ff6b6b;
   --danger-bg: rgba(255, 107, 107, 0.12);
+  --warning: #ffd666;
+  --warning-bg: rgba(255, 193, 7, 0.12);
+  --warning-border: rgba(255, 193, 7, 0.4);
   --focus-ring: 0 0 0 3px rgba(108, 99, 255, 0.35);
   --touch: 44px; /* minimum comfortable hit target */
 }
@@ -609,6 +612,7 @@ body {
 .empty-state h3 { margin: 0.5rem 0 0.25rem; color: var(--text-primary); font-size: 1.05rem; }
 .empty-state p { margin: 0 0 1rem; font-size: 0.875rem; }
 .alert { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.875rem; }
+.alert-warning { background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning); }
 .alert-danger { background: var(--danger-bg); border: 1px solid rgba(255, 107, 107, 0.35); color: #ffb0b0; }
 
 /* Overlay, drawer, modal */
@@ -1076,3 +1080,9 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 .login-form { display: grid; gap: 1rem; }
 .login-submit { width: 100%; min-height: var(--touch); }
 .sidebar-signout { width: 100%; min-height: var(--touch); }
+.login-refused { display: grid; gap: 0.5rem; }
+.login-contact { width: 100%; min-height: var(--touch); text-decoration: none; justify-content: center; }
+.login-submit { text-decoration: none; justify-content: center; }
+.sidebar-user { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; min-width: 0; }
+.sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-user-email { font-size: 0.7rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

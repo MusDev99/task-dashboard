@@ -1,29 +1,62 @@
-// Minimal, dependency-free session auth (OWASP A01/A02/A07).
-// Web Crypto only, so it runs unchanged on Vercel, Netlify and the Edge.
+// Dependency-free session primitives (OWASP A01/A02/A07).
+// Web Crypto only, so it runs unchanged on Netlify, Vercel and the Edge.
 // No relative imports on purpose: tests run this file directly with `node --test`.
 
 export const SESSION_COOKIE = 'wf_session';
+export const OAUTH_COOKIE = 'wf_oauth'; // state + nonce + PKCE verifier while the person is at Google
+export const FLASH_COOKIE = 'wf_flash'; // why sign-in was refused, for the banner on /login
 export const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
+export const OAUTH_TTL_SECONDS = 60 * 10;
+export const FLASH_TTL_SECONDS = 60 * 5;
 
 const enc = new TextEncoder();
+const dec = new TextDecoder();
+
+export interface SessionUser {
+  /** Row id in the `users` tab. */
+  uid: string;
+  email: string;
+}
 
 export interface AuthConfig {
-  /** Both ADMIN_PASSWORD and AUTH_SECRET (>= 16 chars) are set. */
+  /** AUTH_SECRET (>= 16 chars) and the Google client id + secret are all set. */
   configured: boolean;
-  password: string;
   secret: string;
+  googleClientId: string;
+  googleClientSecret: string;
+  /** Public origin (no trailing slash); the OAuth redirect URI is `${appUrl}/api/auth/google/callback`. */
+  appUrl: string;
+  /** Optional Google Workspace domain the account must belong to (extra guard on top of the users tab). */
+  allowedDomain: string;
+  /** Digits only, country code included (for the wa.me link). */
+  contactWhatsapp: string;
 }
 
 export function readAuthConfig(env: Record<string, string | undefined> = process.env): AuthConfig {
-  const password = env.ADMIN_PASSWORD ?? '';
   const secret = env.AUTH_SECRET ?? '';
-  return { configured: password.length >= 8 && secret.length >= 16, password, secret };
+  const googleClientId = env.GOOGLE_CLIENT_ID ?? '';
+  const googleClientSecret = env.GOOGLE_CLIENT_SECRET ?? '';
+  return {
+    configured: secret.length >= 16 && googleClientId.length > 0 && googleClientSecret.length > 0,
+    secret,
+    googleClientId,
+    googleClientSecret,
+    appUrl: (env.APP_URL ?? '').trim().replace(/\/+$/, ''),
+    allowedDomain: (env.GOOGLE_ALLOWED_DOMAIN ?? '').trim().toLowerCase(),
+    contactWhatsapp: (env.CONTACT_WHATSAPP ?? '').replace(/\D/g, ''),
+  };
 }
 
-function toBase64Url(bytes: Uint8Array): string {
+export function toBase64Url(bytes: Uint8Array): string {
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export function fromBase64Url(text: string): Uint8Array {
+  const b64 = text.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (text.length % 4)) % 4);
+  const bin = atob(b64);
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
 }
 
 async function hmac(secret: string, data: string): Promise<Uint8Array> {
@@ -37,26 +70,71 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-/** Constant-time password check: both sides are HMAC'd first so length never leaks. */
-export async function passwordMatches(input: string, expected: string, secret: string): Promise<boolean> {
-  if (!expected) return false;
-  const [a, b] = await Promise.all([hmac(secret, `pw:${input}`), hmac(secret, `pw:${expected}`)]);
-  return timingSafeEqual(a, b);
+type Typ = 's' | 'o' | 'f';
+
+/** `<base64url(json)>.<hmac>`; `typ` is signed too, so a flash cookie can never be replayed as a session. */
+async function sign(secret: string, typ: Typ, body: Record<string, unknown>, ttlSeconds: number, nowMs: number): Promise<string> {
+  const exp = Math.floor(nowMs / 1000) + ttlSeconds;
+  const payload = toBase64Url(enc.encode(JSON.stringify({ ...body, typ, exp })));
+  return `${payload}.${toBase64Url(await hmac(secret, `v2:${payload}`))}`;
 }
 
-/** Signed, expiring session token: `<expiryEpochSeconds>.<signature>`. Stateless, so it survives serverless cold starts. */
-export async function createSessionToken(secret: string, nowMs = Date.now()): Promise<string> {
-  const exp = Math.floor(nowMs / 1000) + SESSION_TTL_SECONDS;
-  return `${exp}.${toBase64Url(await hmac(secret, `session:${exp}`))}`;
+async function verify(token: string | undefined, secret: string, typ: Typ, nowMs: number): Promise<Record<string, unknown> | null> {
+  if (!token || !secret) return null;
+  const parts = token.split('.');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  try {
+    const expected = toBase64Url(await hmac(secret, `v2:${parts[0]}`));
+    if (!timingSafeEqual(enc.encode(parts[1]), enc.encode(expected))) return null;
+    const body = JSON.parse(dec.decode(fromBase64Url(parts[0]))) as Record<string, unknown>;
+    if (body.typ !== typ || typeof body.exp !== 'number' || body.exp * 1000 <= nowMs) return null;
+    return body;
+  } catch {
+    return null;
+  }
 }
 
-export async function verifySessionToken(token: string | undefined, secret: string, nowMs = Date.now()): Promise<boolean> {
-  if (!token || !secret) return false;
-  const [expStr, sig, extra] = token.split('.');
-  if (!expStr || !sig || extra !== undefined || !/^\d{1,12}$/.test(expStr)) return false;
-  if (Number(expStr) * 1000 <= nowMs) return false;
-  const expected = toBase64Url(await hmac(secret, `session:${expStr}`));
-  return timingSafeEqual(enc.encode(sig), enc.encode(expected));
+export async function createSessionToken(secret: string, user: SessionUser, nowMs = Date.now()): Promise<string> {
+  return sign(secret, 's', { uid: user.uid, email: user.email }, SESSION_TTL_SECONDS, nowMs);
+}
+
+/** The signed-in person, or null for a missing, expired, tampered or wrong-type token. */
+export async function verifySessionToken(token: string | undefined, secret: string, nowMs = Date.now()): Promise<SessionUser | null> {
+  const body = await verify(token, secret, 's', nowMs);
+  return body && typeof body.uid === 'string' && typeof body.email === 'string' ? { uid: body.uid, email: body.email } : null;
+}
+
+export interface OAuthState {
+  state: string;
+  nonce: string;
+  verifier: string;
+  next: string;
+}
+
+export const createOAuthCookie = (secret: string, s: OAuthState, nowMs = Date.now()) =>
+  sign(secret, 'o', { ...s }, OAUTH_TTL_SECONDS, nowMs);
+
+export async function readOAuthCookie(token: string | undefined, secret: string, nowMs = Date.now()): Promise<OAuthState | null> {
+  const b = await verify(token, secret, 'o', nowMs);
+  return b && typeof b.state === 'string' && typeof b.nonce === 'string' && typeof b.verifier === 'string' && typeof b.next === 'string'
+    ? { state: b.state, nonce: b.nonce, verifier: b.verifier, next: b.next }
+    : null;
+}
+
+export type FlashReason = 'not_registered' | 'inactive';
+export interface Flash {
+  reason: FlashReason;
+  email: string;
+}
+
+export const createFlashCookie = (secret: string, f: Flash, nowMs = Date.now()) =>
+  sign(secret, 'f', { ...f }, FLASH_TTL_SECONDS, nowMs);
+
+export async function readFlashCookie(token: string | undefined, secret: string, nowMs = Date.now()): Promise<Flash | null> {
+  const b = await verify(token, secret, 'f', nowMs);
+  return b && (b.reason === 'not_registered' || b.reason === 'inactive') && typeof b.email === 'string'
+    ? { reason: b.reason, email: b.email }
+    : null;
 }
 
 /** Only same-site relative paths are allowed after login (prevents open redirects, A01). */
@@ -78,7 +156,7 @@ export function isSameOrigin(request: Request): boolean {
   }
 }
 
-/** Best-effort login throttle. In-memory, so per serverless instance; add an edge/WAF rule for a hard limit. */
+/** Best-effort throttle. In-memory, so per serverless instance; add an edge/WAF rule for a hard limit. */
 export function createRateLimiter(max: number, windowMs: number) {
   const hits = new Map<string, { count: number; resetAt: number }>();
   return {

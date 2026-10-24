@@ -4,6 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { logout } from "../../lib/auth-actions";
+import Avatar from "./ui/Avatar";
+import { displayName } from "../lib/ui";
+
+interface SidebarUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
+}
 
 const navItems = [
   {
@@ -73,7 +82,7 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ user }: { user: SidebarUser | null }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -279,6 +288,15 @@ export default function Sidebar() {
             Roster → availability → tasks
           </div>
         </div>
+        {user && (
+          <div className="sidebar-user">
+            <Avatar id={user.id} name={user.name} src={user.avatar} size="sm" />
+            <div style={{ minWidth: 0 }}>
+              <div className="sidebar-user-name">{displayName(user.name)}</div>
+              <div className="sidebar-user-email">{user.email}</div>
+            </div>
+          </div>
+        )}
         <form action={logout} style={{ marginTop: "0.75rem" }}>
           <button type="submit" className="btn sidebar-signout">Sign out</button>
         </form>

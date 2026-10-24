@@ -51,7 +51,7 @@ function assertColumns(tab: string, rows: Record<string, Cell>[], columns: reado
   }
 }
 
-async function readUsers(): Promise<User[]> {
+export async function readUsers(): Promise<User[]> {
   const rows = await readTable("users");
   assertColumns("users", rows, USER_COLUMNS);
   return rows.map(toUser);
