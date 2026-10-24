@@ -106,6 +106,7 @@ Run the project's security-review skill before releases and after adding a serve
 
 ## Changelog
 
+- **Login redesign**: split-screen sign-in (brand and three feature points on desktop, compact on mobile) with a Google-branded button, "Redirecting…" feedback, and refusal/error banners kept inside the card.
 - **Google SSO**: sign in with Google; only active rows in the Users tablele get in, others see a "contact me on WhatsApp" banner. Replaces the shared password (`ADMIN_PASSWORD` is gone; new env vars `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `CONTACT_WHATSAPP`). Everyone signs in again once after deploy.
 - **Security & workflow**: sign-in (production fails closed with 503 until configured), session guard in every server action, security headers/CSP, `npm audit fix` (6 -> 0 vulnerabilities, Next 16.4.3), `.gitignore`, unit tests, `npm run verify` / `smoke`, Claude skills for the AI-driven workflow, OWASP + mobile-first + git rules in CLAUDE.md.
 - **Security review**: added the `appsec-review` skill and a first review report (`docs/security-review-2026-10-22.md`): top open items are no authentication, vulnerable dependencies and staff data in the repo.

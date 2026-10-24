@@ -66,6 +66,9 @@
 | Tesler | the system binds `googleId` automatically; nobody types ids |
 | Peak-End | returns the person to the page they asked for; clear message and next step when refused |
 
+### 3.4b Login page redesign
+Split layout: brand + 3 points (Miller) beside the card on >= 900px, compact brand above the card below that. One primary action: a Google-branded button (white surface, four-colour G, 48px, focus ring, `aria-busy` "Redirecting to Google…" on click). Banners (not registered / deactivated / errors) sit above the button; no horizontal scroll at 375, 768 or 1280px (checked). The login shell is `position: fixed` so it is full-bleed over the app layout's padded `<main>`.
+
 ### 3.5 Mobile-first (375px)
 Single column card, banner stacks the contact button under the text (screenshot checked).
 
