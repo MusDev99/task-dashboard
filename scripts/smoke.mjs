@@ -15,6 +15,10 @@ for (const path of ['/', '/users', '/roster', '/tasks', '/settings', '/leaderboa
 const action = await req('/users', { method: 'POST', headers: { 'next-action': 'smoke', 'content-type': 'text/plain' }, body: '[]' });
 check('server action without session is refused', action.status === 401 || action.status === 503, `HTTP ${action.status}`);
 
+const start = await req('/api/auth/google');
+const startTo = start.headers.get('location') ?? '';
+check('Google sign-in starts (302 to accounts.google.com, or /login?e=unconfigured)', start.status === 302 && (startTo.startsWith('https://accounts.google.com/') || startTo.includes('/login?e=unconfigured')), `HTTP ${start.status}`);
+
 const login = await req('/login');
 check('/login is reachable', login.status === 200, `HTTP ${login.status}`);
 for (const h of ['x-content-type-options', 'x-frame-options', 'referrer-policy', 'content-security-policy']) {

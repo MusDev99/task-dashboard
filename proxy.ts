@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, readAuthConfig, verifySessionToken } from "./lib/auth-core";
 
-// Next 16 "proxy" (formerly middleware): everything except /login needs a session (OWASP A01).
+// Next 16 "proxy" (formerly middleware): everything except /login and the OAuth routes needs a session (OWASP A01).
 // This app holds staff names, emails and phone numbers, so reads are private too.
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  if (pathname === "/login") return NextResponse.next();
+  // /login shows the Google button; /api/auth/* is the OAuth start + callback (they establish the session).
+  if (pathname === "/login" || pathname.startsWith("/api/auth/")) return NextResponse.next();
 
   const cfg = readAuthConfig();
   const production = process.env.NODE_ENV === "production";
@@ -14,7 +15,7 @@ export async function proxy(req: NextRequest) {
     if (!production || process.env.AUTH_DISABLED === "true") return NextResponse.next(); // explicit opt-out / local dev
     // Fail closed: an unconfigured production deploy must not be world-editable.
     return new NextResponse(
-      "Sign-in is not configured. Set ADMIN_PASSWORD and AUTH_SECRET in the server environment (see README).",
+      "Sign-in is not configured. Set AUTH_SECRET, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server environment (see README).",
       { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } }
     );
   }
