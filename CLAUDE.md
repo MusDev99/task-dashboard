@@ -7,7 +7,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - `npm run seed:data` — seeds the `users` and `tasks` tables from `json/` (**overwrites them**; also resets any CRUD changes; does not touch `roster` or settings tables)
 - `npm run migrate:settings` — idempotent: seeds settings tables from `json/` if missing, backs up `users`, converts `stationCode` → `locationId`, creates roles from role ids in use
 - `npx tsc --noEmit` — typecheck (ESLint config is currently broken; don't rely on `next lint`)
-- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks
+- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + Sheets (needs a build and Playwright)
 
 ## Data rules
 - Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + legacy `tasks` = quiz completions. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
@@ -30,7 +30,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - Pages that read data export `dynamic = "force-dynamic"`.
 - **No hardcoded data** in components — everything comes from the data store. `json/` is seed/default data for migrations and for tables that don't exist yet.
 - Secrets: never read, print or commit `.env*` or `keys/`. Error messages must describe problems (lengths, found/missing markers) without echoing secret values. Credentials come from `DATA_STORE_ID` + `DATA_STORE_KEY_PATH` (credentials JSON), or on hosts without files `DATA_STORE_CLIENT_EMAIL` + `DATA_STORE_PRIVATE_KEY` (older variable names remain supported as fallbacks inside `lib/store.ts`). Document new variables in `.env.example`.
-- **Authentication**: one shared team password (`ADMIN_PASSWORD`) + signing key (`AUTH_SECRET`, >= 16 chars). `proxy.ts` redirects everything but `/login`; `lib/auth.ts` (`requireSession`) guards every server action; `lib/auth-core.ts` is dependency-free and unit-tested. Production without those env vars returns 503 (fail closed). Per-user identity/roles are not built yet.
+- **Authentication**: Google SSO (OIDC authorization code + PKCE, hand-rolled, no dependency). Only people with an **active row in the `users` tab** (matched by Google `sub` stored in `googleId`, else by email, case-insensitive) get a session; everyone else sees the "not registered — contact me on WhatsApp" banner on `/login` (`CONTACT_WHATSAPP`). Session cookie `wf_session` = HMAC-signed `{uid,email,exp}` (8h). `proxy.ts` redirects everything but `/login` and `/api/auth/*`; `lib/auth.ts` (`requireSession`, `currentUser`) guards every server action; pure logic is in `lib/auth-core.ts`, `lib/oidc.ts`, `lib/registration.ts` (unit-tested). The registration lookup uses the strict `readUsers()` (an outage is "unavailable", never "not registered"). Production without `AUTH_SECRET` + `GOOGLE_CLIENT_ID/SECRET` returns 503 (fail closed). To grant access, add the person to **Users**; to revoke, deactivate them (an existing session lasts at most 8h). No per-user roles yet.
 
 ## Code conventions
 - Server components fetch; client components (`"use client"`) handle interaction. Keep the boundary narrow.
@@ -74,16 +74,16 @@ Run the `appsec-review` skill (`.claude/skills/appsec-review/`; automated part: 
 ## Security — OWASP Top 10 (2021), mandatory
 | Risk | Rule in this repo |
 |---|---|
-| A01 Access control | Everything except `/login` needs a session (`proxy.ts`). **First line of every exported `"use server"` function: `await requireSession()`** (they are public POST endpoints). Redirect targets go through `safeNext()` |
-| A02 Crypto | Secrets only in env (`ADMIN_PASSWORD`, `AUTH_SECRET`, `GOOGLE_*`). Sessions are HMAC-signed, `HttpOnly`, `SameSite=Lax`, `Secure` in prod. Never hand-roll other crypto |
+| A01 Access control | Everything except `/login` and `/api/auth/*` needs a session (`proxy.ts`); only registered, active `users` rows can sign in. **First line of every exported `"use server"` function: `await requireSession()`** (they are public POST endpoints). Redirect targets go through `safeNext()` |
+| A02 Crypto | Secrets only in env (`AUTH_SECRET`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_*`). Sessions are HMAC-signed, `HttpOnly`, `SameSite=Lax`, `Secure` in prod. OAuth uses `state` + `nonce` + PKCE and verifies the ID token signature, `iss`, `aud`, `exp`, `email_verified`. Never hand-roll other crypto |
 | A03 Injection | Validate + trim on the server (`lib/validation.ts`); Sheets writes stay `RAW`; no `dangerouslySetInnerHTML`; links only via `safeUrl` |
 | A04 Design | Fail closed: unconfigured production returns 503. `AUTH_DISABLED=true` is only for a deploy already behind SSO/VPN |
 | A05 Misconfiguration | Headers/CSP live in `next.config.ts`; user-facing errors are generic (`fail()`), details go to `console.error` only. No debug output |
 | A06 Components | `npm audit --omit=dev` before each release; `npm audit fix`, never `--force` without a test pass |
-| A07 Auth | Constant-time compare, throttle, one generic message. Do not add "user not found" style hints |
+| A07 Auth | Constant-time signature compare, throttled OAuth start/callback, redirect only via `safeNext()`. Only the banner on `/login` (signed flash cookie, 5 min) reveals *why* sign-in was refused |
 | A08 Integrity | Commit the lockfile; no new third-party script/CDN without adding it to the CSP deliberately |
 | A09 Logging | Log failures server-side; never log passwords, tokens or keys |
-| A10 SSRF | Server code never fetches a URL taken from the client |
+| A10 SSRF | Server code fetches fixed Google hosts only (`googleEndpoints` in `lib/oidc.ts`); never a URL taken from the client |
 
 ## Mobile-first & Laws of UX
 Design for **375px first**, then scale up (thumb-reachable primary action, drawers full-width, tables collapse to cards below 768px, no horizontal scroll). Apply the Laws of UX listed under *UI / UX standard* to every new or changed screen and name the law in the PR/feature.md.

@@ -32,7 +32,7 @@ A new **required** env var (e.g. auth secrets) is a deploy-time breaking change:
 | 3 | Audit if security-relevant | `owasp-audit` -> `docs/audits/...` |
 | 4 | Bump version + changelog | `npm version <patch\|minor\|major> --no-git-tag-version`; move entries under the new version |
 | 5 | Release PR + tag | `git tag -a vX.Y.Z -m "vX.Y.Z"` after merge; push tag |
-| 6 | Deploy **preview** first | Netlify: env vars scoped to Functions (`GOOGLE_*`, `ADMIN_PASSWORD`, `AUTH_SECRET`); deploy preview opens `/login`; `npm run smoke -- <preview-url>` is green. |
+| 6 | Deploy **preview** first | Netlify: env vars scoped to Functions (`GOOGLE_*`, `GOOGLE_CLIENT_ID/SECRET`, `APP_URL`, `AUTH_SECRET`, `CONTACT_WHATSAPP`); deploy preview opens `/login`; `npm run smoke -- <preview-url>` is green. |
 | 7 | Smoke test the preview | `npm run smoke -- https://<preview-url>` all ✅ |
 | 8 | Promote to production, smoke again | same command against production |
 | 9 | GitHub Release notes | highlights, breaking/env changes, upgrade steps, rollback |
