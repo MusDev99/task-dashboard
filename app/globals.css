@@ -815,12 +815,20 @@ body {
 .person-main small { font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .time-chip { font-family: var(--font-mono); font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; background: rgba(255, 255, 255, 0.07); border: 1px solid var(--border-subtle); white-space: nowrap; color: var(--text-secondary); }
 .person-card .code-chip { width: 44px; height: 26px; flex-shrink: 0; }
-.wb-unscheduled { border: 1px dashed var(--border-accent); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; }
-.wb-unscheduled h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 0.75rem; font-size: 0.95rem; color: var(--text-secondary); }
-.wb-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.6rem; }
-.wb-chip { display: grid; padding: 0.55rem 0.9rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-card); min-width: 150px; }
-.wb-chip b { font-size: 0.85rem; }
-.wb-chip small { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
+.wb-unscheduled { border: 1px solid rgba(255, 194, 51, 0.4); border-left-width: 4px; border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; background: rgba(255, 194, 51, 0.05); }
+.wb-unscheduled-head { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.wb-unscheduled-icon { width: 36px; height: 36px; border-radius: var(--radius-md); display: grid; place-items: center; color: #ffd97d; background: rgba(255, 194, 51, 0.14); flex-shrink: 0; }
+.wb-unscheduled-text { flex: 1 1 240px; min-width: 0; }
+.wb-unscheduled-text h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1rem; color: #ffd97d; }
+.wb-unscheduled-text p { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--text-secondary); }
+.wb-unscheduled-cta { min-height: var(--touch); border-color: rgba(255, 194, 51, 0.45); color: #ffd97d; }
+.wb-unscheduled-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.6rem; }
+.wb-unscheduled-item { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.8rem; min-width: 0; border: 1px solid rgba(255, 194, 51, 0.22); border-radius: var(--radius-md); background: var(--bg-card); }
+.wb-unscheduled-item .person-main { flex: 1; }
+.wb-needs { flex-shrink: 0; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em; padding: 2px 8px; border-radius: var(--radius-full); color: #ffd97d; background: rgba(255, 194, 51, 0.12); border: 1px solid rgba(255, 194, 51, 0.35); }
+.wb-unscheduled-toggle { margin-top: 0.9rem; min-height: var(--touch); padding: 0 0.5rem; background: none; border: 0; color: #ffd97d; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+.wb-unscheduled-toggle:hover { text-decoration: underline; }
+.wb-unscheduled-toggle:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-sm); }
 
 @media (max-width: 900px) {
   .wb-panels { grid-template-columns: 1fr; }

@@ -8,10 +8,13 @@ import { dayLabel, shiftDate } from "../../lib/roster-dates";
 import type { ShiftConfig } from "../../lib/shifts";
 import type { Resource, RosterEntry } from "../roster/types";
 import CodeChip from "../roster/CodeChip";
+import Avatar from "../components/ui/Avatar";
 import ToastRegion from "../components/ui/Toast";
 import { useToasts } from "../components/ui/useToasts";
 import { CalendarIcon, CopyIcon, ClockIcon, ChevronLeft, ChevronRight, SearchIcon, UsersIcon, UserCheckIcon, UserXIcon, HelpIcon, AlertIcon } from "../components/ui/Icons";
 import { displayName } from "../lib/ui";
+
+const UNSCHEDULED_PREVIEW = 8;
 
 interface Props {
   resources: Resource[];
@@ -48,6 +51,7 @@ export default function WhereaboutsSection({ resources, entries, config, initial
   const [date, setDate] = useState(initialDate);
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
+  const [showAllUnscheduled, setShowAllUnscheduled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState(false);
   const [, rerender] = useReducer((n: number) => n + 1, 0);
@@ -211,18 +215,41 @@ export default function WhereaboutsSection({ resources, entries, config, initial
             </div>
           </div>
 
-          <div className="wb-unscheduled">
-            <h3><HelpIcon size={16} /> Unscheduled Personnel ({unscheduled.length})</h3>
+          <div className="wb-unscheduled" role="region" aria-labelledby="wb-unscheduled-title">
+            <div className="wb-unscheduled-head">
+              <div className="wb-unscheduled-icon" aria-hidden="true"><AlertIcon size={18} /></div>
+              <div className="wb-unscheduled-text">
+                <h3 id="wb-unscheduled-title">
+                  Unscheduled Personnel
+                  <span className="wb-badge wb-badge-warn">{whereabouts.unscheduled.length}</span>
+                </h3>
+                <p>{whereabouts.unscheduled.length === 0 ? "No gaps in coverage for this day." : `No shift or leave recorded for ${dayLabel(date)}. Their whereabouts are unknown.`}</p>
+              </div>
+              {whereabouts.unscheduled.length > 0 && (
+                <Link href={`/roster?month=${month}`} className="btn wb-unscheduled-cta">Assign in Roster <ChevronRight size={14} /></Link>
+              )}
+            </div>
             {unscheduled.length === 0 ? (
               <p className="wb-empty" style={{ padding: "0.5rem 0" }}>{whereabouts.unscheduled.length === 0 ? "Everyone has a roster entry for this day." : "No unscheduled staff match the filter."}</p>
             ) : (
               <>
-                <ul className="wb-chips">
-                  {unscheduled.map((p) => (
-                    <li key={p.id} className="wb-chip"><b>{displayName(p.name)}</b><small>{p.employeeId ?? p.email}</small></li>
+                <ul className="wb-unscheduled-list">
+                  {(showAllUnscheduled ? unscheduled : unscheduled.slice(0, UNSCHEDULED_PREVIEW)).map((p) => (
+                    <li key={p.id} className="wb-unscheduled-item">
+                      <Avatar id={p.id} name={displayName(p.name)} src={null} size="sm" />
+                      <div className="person-main">
+                        <b title={displayName(p.name)}>{displayName(p.name)}</b>
+                        <small>{p.employeeId ?? p.email}</small>
+                      </div>
+                      <span className="wb-needs">Needs shift</span>
+                    </li>
                   ))}
                 </ul>
-                <p className="field-hint" style={{ marginTop: 10 }}>Assign them a shift or leave in the <Link href={`/roster?month=${month}`} style={{ color: "#a8a1ff" }}>Roster →</Link></p>
+                {unscheduled.length > UNSCHEDULED_PREVIEW && (
+                  <button type="button" className="wb-unscheduled-toggle" aria-expanded={showAllUnscheduled} onClick={() => setShowAllUnscheduled((v) => !v)}>
+                    {showAllUnscheduled ? "Show fewer" : `Show all ${unscheduled.length}`}
+                  </button>
+                )}
               </>
             )}
           </div>
