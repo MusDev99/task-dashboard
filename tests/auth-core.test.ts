@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createFlashCookie, createOAuthCookie, createRateLimiter, createSessionToken, isSameOrigin, readAuthConfig,
+  authConfigProblems, createFlashCookie, createOAuthCookie, createRateLimiter, createSessionToken, isSameOrigin, readAuthConfig,
   readFlashCookie, readOAuthCookie, safeNext, verifySessionToken,
 } from '../lib/auth-core.ts';
 
@@ -63,4 +63,13 @@ test('rate limiter blocks after max and recovers after the window', () => {
   assert.deepEqual([rl.take('ip', 0), rl.take('ip', 1), rl.take('ip', 2)], [true, true, false]);
   assert.equal(rl.take('other', 2), true);
   assert.equal(rl.take('ip', 1001), true);
+});
+
+test('config problems name the variable, never its value', () => {
+  assert.deepEqual(authConfigProblems({}).length, 3);
+  const short = authConfigProblems({ AUTH_SECRET: 'abc123', GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'sec' });
+  assert.equal(short.length, 1);
+  assert.match(short[0], /AUTH_SECRET is too short \(6 characters/);
+  assert.ok(!short[0].includes('abc123'));
+  assert.deepEqual(authConfigProblems({ AUTH_SECRET: 'x'.repeat(16), GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'sec' }), []);
 });

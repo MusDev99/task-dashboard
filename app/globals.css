@@ -1096,3 +1096,4 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 .sidebar-user { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; min-width: 0; }
 .sidebar-user-name { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar-user-email { font-size: 0.7rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.login-problems { margin: 0.4rem 0 0.4rem 1.1rem; padding: 0; }

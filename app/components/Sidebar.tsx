@@ -297,9 +297,11 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
             </div>
           </div>
         )}
-        <form action={logout} style={{ marginTop: "0.75rem" }}>
-          <button type="submit" className="btn sidebar-signout">Sign out</button>
-        </form>
+        {user && (
+          <form action={logout} style={{ marginTop: "0.75rem" }}>
+            <button type="submit" className="btn sidebar-signout">Sign out</button>
+          </form>
+        )}
       </div>
     </>
   );

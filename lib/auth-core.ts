@@ -47,6 +47,20 @@ export function readAuthConfig(env: Record<string, string | undefined> = process
   };
 }
 
+/**
+ * Why `configured` is false, by variable name only (never a value). Shown on /login in development so a
+ * missing or mistyped variable is obvious; production never shows it.
+ */
+export function authConfigProblems(env: Record<string, string | undefined> = process.env): string[] {
+  const out: string[] = [];
+  const secret = env.AUTH_SECRET ?? '';
+  if (!secret) out.push('AUTH_SECRET is missing or empty');
+  else if (secret.length < 16) out.push(`AUTH_SECRET is too short (${secret.length} characters, needs at least 16)`);
+  if (!env.GOOGLE_CLIENT_ID) out.push('GOOGLE_CLIENT_ID is missing or empty');
+  if (!env.GOOGLE_CLIENT_SECRET) out.push('GOOGLE_CLIENT_SECRET is missing or empty');
+  return out;
+}
+
 export function toBase64Url(bytes: Uint8Array): string {
   let bin = '';
   for (const b of bytes) bin += String.fromCharCode(b);

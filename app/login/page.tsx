@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { FLASH_COOKIE, readAuthConfig, readFlashCookie, safeNext } from "../../lib/auth-core";
+import { FLASH_COOKIE, authConfigProblems, readAuthConfig, readFlashCookie, safeNext } from "../../lib/auth-core";
 import { whatsappLink } from "../../lib/registration";
 
 export const metadata: Metadata = { title: "Sign in · WorkForce Management" };
@@ -47,6 +47,18 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         {e === "unconfigured" || !cfg.configured ? (
           <div className="alert alert-danger" role="alert">
             Sign-in is not configured. Set <code>AUTH_SECRET</code>, <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in the server environment.
+            {process.env.NODE_ENV !== "production" && (
+              <>
+                {" "}
+                <strong>This server sees:</strong>
+                <ul className="login-problems">
+                  {authConfigProblems().map((p) => (
+                    <li key={p}>{p}</li>
+                  ))}
+                </ul>
+                <span>Edit <code>.env</code> in the project root, then stop and restart <code>npm run dev</code> (Next only reads it at start-up). Sign-in is skipped in development until this is fixed.</span>
+              </>
+            )}
           </div>
         ) : null}
         {e && MESSAGES[e] && (
