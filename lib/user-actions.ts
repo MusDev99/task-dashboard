@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { appendRow, updateRowById, deleteRowsWhere, readTable, upsertRowsById } from "./store";
 import { getUsers } from "./actions";
-import { USER_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
+import { TEAM_COLUMNS, USER_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
 import { cleanUserInput, validateUserInput, type FieldErrors, type UserInput, type UserRefs } from "./validation";
 import { getLocations, getRoles } from "./settings";
 import type { User } from "../app/lib/types";
@@ -17,7 +17,7 @@ export type ActionResult<T = unknown> =
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 
 function refresh() {
-  for (const p of ["/users", "/", "/leaderboard", "/roster", "/tasks"]) revalidatePath(p);
+  for (const p of ["/users", "/", "/leaderboard", "/roster", "/tasks", "/teams"]) revalidatePath(p);
 }
 
 async function userRefs(): Promise<UserRefs> {
@@ -108,6 +108,8 @@ export async function deleteUser(id: string): Promise<ActionResult<{ tasksDelete
     });
     // Work tasks are kept but unassigned (the work still needs doing).
     await unassignWorkTasks(id);
+    // Team memberships go; teams they led keep going without a lead.
+    await removeFromTeams(id);
     const tasksDeleted = await deleteRowsWhere("tasks", "userId", id);
     const usersDeleted = await deleteRowsWhere("users", "id", id);
     if (usersDeleted === 0) return { ok: false, message: "This user no longer exists." };
@@ -129,4 +131,15 @@ async function unassignWorkTasks(userId: string) {
   const stamp = new Date().toISOString().replace("T", " ").replace("Z", "");
   const mine = rows.filter((r) => String(r.assigneeId ?? "") === userId).map((r) => ({ ...r, assigneeId: "", updatedAt: stamp }));
   await upsertRowsById("work_tasks", WORK_TASK_COLUMNS, mine);
+}
+
+async function removeFromTeams(userId: string) {
+  try {
+    await deleteRowsWhere("team_members", "userId", userId);
+    const led = (await readTable("teams")).filter((r) => String(r.leadId ?? "") === userId);
+    await upsertRowsById("teams", TEAM_COLUMNS, led.map((r) => ({ ...r, leadId: "", updatedAt: nowStamp() })));
+  } catch (e) {
+    if (String(e).includes("Unable to parse range") || String(e).includes("not found")) return; // tabs not created yet
+    throw e;
+  }
 }

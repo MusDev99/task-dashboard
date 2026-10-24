@@ -5,9 +5,11 @@ import Avatar from "../components/ui/Avatar";
 import { useDismiss } from "../components/ui/useDismiss";
 import { displayName } from "../lib/ui";
 import type { Availability, Person } from "./types";
+import type { TeamOption } from "../teams/types";
 
 interface Props {
   people: Person[];
+  teams: TeamOption[];
   value: string | null;
   availability: Map<string, Availability> | null; // null = loading
   hasWindow: boolean;
@@ -24,18 +26,21 @@ function badge(a: Availability | undefined, hasWindow: boolean) {
 }
 
 /** Searchable assignee list showing roster availability + open workload. Unavailable people stay selectable. */
-export default function AssigneePicker({ people, value, availability, hasWindow, onChange, invalid }: Props) {
+export default function AssigneePicker({ people, teams, value, availability, hasWindow, onChange, invalid }: Props) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
+  const [team, setTeam] = useState(""); // narrows the list only; the task stores a person, never a team
   const ref = useRef<HTMLDivElement>(null);
   useDismiss(ref, open, () => setOpen(false));
   const selected = people.find((p) => p.id === value);
 
   const options = useMemo(() => {
     const needle = q.trim().toLowerCase();
+    const members = team ? new Set(teams.find((t) => t.id === team)?.memberIds ?? []) : null;
     // Active people only, plus the current assignee if they became inactive.
     return people
       .filter((p) => p.isActive || p.id === value)
+      .filter((p) => !members || members.has(p.id) || p.id === value)
       .filter((p) => !needle || [p.name, p.email, p.employeeId].some((v) => v?.toLowerCase().includes(needle)))
       .sort((a, b) => {
         // Available first, then by lowest open workload, then name.
@@ -43,7 +48,7 @@ export default function AssigneePicker({ people, value, availability, hasWindow,
         const wb = availability?.get(b.id)?.warning ? 1 : 0;
         return wa - wb || (availability?.get(a.id)?.openPoints ?? 0) - (availability?.get(b.id)?.openPoints ?? 0) || a.name.localeCompare(b.name);
       });
-  }, [people, q, value, availability]);
+  }, [people, teams, team, q, value, availability]);
 
   const choose = (id: string | null) => {
     onChange(id);
@@ -72,6 +77,12 @@ export default function AssigneePicker({ people, value, availability, hasWindow,
       {open && (
         <div className="assignee-pop">
           <input className="input" autoFocus placeholder="Search people…" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} style={{ minHeight: 38 }} />
+          {teams.length > 0 && (
+            <select className="select assignee-team" aria-label="Show members of team" value={team} onChange={(e) => setTeam(e.target.value)}>
+              <option value="">Everyone</option>
+              {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.memberIds.length})</option>)}
+            </select>
+          )}
           <div role="listbox" aria-label="Assignee" className="assignee-list">
             <button type="button" role="option" aria-selected={!value} className="assignee-option" onClick={() => choose(null)}>
               <span className="assignee-none">—</span><span className="assignee-option-main"><b>Unassigned</b></span>

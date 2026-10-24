@@ -1,4 +1,5 @@
-import { loadUsers, getRoster } from "../../lib/actions";
+import { loadUsers, getRoster, loadTeams } from "../../lib/actions";
+import { toTeamOptions } from "../../lib/teams";
 import { getShiftConfig } from "../../lib/shifts";
 import { MONTH_RE, todayIn } from "../../lib/roster-dates";
 import { toResources } from "../../lib/whereabouts";
@@ -14,8 +15,8 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   const today = todayIn(config.timezone);
   const month = requested && MONTH_RE.test(requested) ? requested : today.slice(0, 7);
 
-  const [{ users, error: usersError }, roster, locations] = await Promise.all([loadUsers(), getRoster(month), getLocations()]);
+  const [{ users, error: usersError }, roster, locations, teamData] = await Promise.all([loadUsers(), getRoster(month), getLocations(), loadTeams()]);
   const resources = toResources(users, locations);
 
-  return <RosterClient resources={resources} entries={roster.entries} config={config} month={month} today={today} loadError={roster.error || usersError} />;
+  return <RosterClient resources={resources} entries={roster.entries} config={config} month={month} today={today} teams={toTeamOptions(teamData.teams, teamData.members)} loadError={roster.error || usersError || teamData.error} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { setCells, clearCells, clearSchedule } from "../../lib/roster-actions";
 import { dateOf, daysInMonth, monthLabel, shiftMonth, MONTH_RE } from "../../lib/roster-dates";
 import type { ShiftConfig } from "../../lib/shifts";
@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, AlertIcon } from "../components/ui/Icons";
 import { download, toCsv } from "./csv";
 import { displayName } from "../lib/ui";
 import type { CellRef, Resource, RosterEntry } from "./types";
+import type { TeamOption } from "../teams/types";
 
 const key = (userId: string, date: string) => `${userId}|${date}`;
 
@@ -27,6 +28,7 @@ interface Props {
   config: ShiftConfig;
   month: string;
   today: string;
+  teams: TeamOption[];
   loadError: boolean;
 }
 
@@ -37,8 +39,9 @@ interface PickerState {
   cells: CellRef[];
 }
 
-export default function RosterClient({ resources, entries, config, month, today, loadError }: Props) {
+export default function RosterClient({ resources, entries, config, month, today, teams, loadError }: Props) {
   const router = useRouter();
+  const params = useSearchParams();
   const { toasts, notify } = useToasts();
   const [navPending, startNav] = useTransition();
   const [saving, startSave] = useTransition();
@@ -60,13 +63,27 @@ export default function RosterClient({ resources, entries, config, month, today,
   // Filters
   const [picked, setPicked] = useState<Set<string>>(() => new Set(resources.map((r) => r.id)));
   const [location, setLocation] = useState("");
+  const [team, setTeam] = useState(() => (teams.some((t) => t.id === params.get("team")) ? params.get("team")! : ""));
   const [focusedUser, setFocusedUser] = useState<string | null>(null);
   const locations = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of resources) if (r.locationId) m.set(r.locationId, r.locationName ?? r.locationId);
     return [...m].sort((a, b) => a[1].localeCompare(b[1]));
   }, [resources]);
-  const shown = useMemo(() => resources.filter((r) => picked.has(r.id) && (!location || r.locationId === location)), [resources, picked, location]);
+  const teamMembers = useMemo(() => (team ? new Set(teams.find((t) => t.id === team)?.memberIds ?? []) : null), [teams, team]);
+  const shown = useMemo(
+    () => resources.filter((r) => picked.has(r.id) && (!location || r.locationId === location) && (!teamMembers || teamMembers.has(r.id))),
+    [resources, picked, location, teamMembers]
+  );
+
+  // Mirror the team filter to the URL (keeps ?month=).
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search);
+    if (team) next.set("team", team);
+    else next.delete("team");
+    const qs = next.toString();
+    window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
+  }, [team]);
 
   // Selection / picker / focus
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -222,7 +239,11 @@ export default function RosterClient({ resources, entries, config, month, today,
   const goMonth = (m: string) => {
     if (!MONTH_RE.test(m)) return;
     setSel(null);
-    startNav(() => router.push(m === today.slice(0, 7) ? "/roster" : `/roster?month=${m}`));
+    const next = new URLSearchParams();
+    if (m !== today.slice(0, 7)) next.set("month", m);
+    if (team) next.set("team", team);
+    const qs = next.toString();
+    startNav(() => router.push(qs ? `/roster?${qs}` : "/roster"));
   };
 
   const exportCsv = () => {
@@ -277,6 +298,12 @@ export default function RosterClient({ resources, entries, config, month, today,
           <option value="">All locations</option>
           {locations.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
+        {teams.length > 0 && (
+          <select className="select" aria-label="Filter by team" value={team} onChange={(e) => setTeam(e.target.value)}>
+            <option value="">All teams</option>
+            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        )}
         <span className="page-subtitle" aria-live="polite">
           {shown.length} of {resources.length} shown · {totalShownHours}h this month · {monthLabel(month)}
           {(saving || navPending) && <span style={{ marginLeft: 8, color: "var(--accent-amber)" }}>Saving…</span>}
@@ -306,7 +333,7 @@ export default function RosterClient({ resources, entries, config, month, today,
         {shown.length === 0 ? (
           <div className="table-card"><div className="empty-state">
             <h3>{resources.length === 0 ? "No active resources" : "No resources match"}</h3>
-            <p>{resources.length === 0 ? "Add or activate users on the Users page." : "Adjust the resource or location filter."}</p>
+            <p>{resources.length === 0 ? "Add or activate users on the Users page." : "Adjust the resource, location or team filter."}</p>
           </div></div>
         ) : (
           <RosterGrid

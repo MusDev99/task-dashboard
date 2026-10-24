@@ -62,6 +62,19 @@ const navItems = [
     ),
   },
   {
+    label: "Teams",
+    href: "/teams",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="6" r="3" />
+        <circle cx="5" cy="15" r="2.5" />
+        <circle cx="19" cy="15" r="2.5" />
+        <path d="M8.5 20.5a3.5 3.5 0 0 1 7 0" />
+        <path d="M12 9v3M7 13.5 10 12M17 13.5 14 12" />
+      </svg>
+    ),
+  },
+  {
     label: "Leaderboard",
     href: "/leaderboard",
     icon: (

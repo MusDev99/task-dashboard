@@ -27,4 +27,5 @@ export const CopyIcon = icon(<><rect x="9" y="9" width="13" height="13" rx="2" /
 export const ClockIcon = icon(<><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>);
 export const UserCheckIcon = icon(<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><polyline points="17 11 19 13 23 9" /></>);
 export const UserXIcon = icon(<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="18" y1="8" x2="23" y2="13" /><line x1="23" y1="8" x2="18" y2="13" /></>);
+export const CrownIcon = icon(<path d="M3 7l4.5 4L12 4l4.5 7L21 7l-2 12H5Z" />);
 export const HelpIcon = icon(<><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></>);

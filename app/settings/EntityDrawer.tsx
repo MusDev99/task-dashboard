@@ -6,7 +6,8 @@ import { cleanEntity, keyOf, shiftHours, validateEntity, type SettingErrors, typ
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { CloseIcon } from "../components/ui/Icons";
 import { useFocusTrap } from "../components/ui/useFocusTrap";
-import { COLOR_PRESETS, type EntityDef, type FieldDef } from "./entities";
+import { type EntityDef, type FieldDef } from "./entities";
+import ColorField from "../components/ui/ColorField";
 
 interface Props {
   def: EntityDef;
@@ -113,14 +114,7 @@ export default function EntityDrawer({ def, record, siblings, onClose, onSaved }
         ) : f.type === "textarea" ? (
           <textarea {...common} className="input textarea" rows={2} value={value} placeholder={f.placeholder} onChange={(e) => set(f.key, e.target.value)} />
         ) : f.type === "color" ? (
-          <div className="color-field">
-            <input {...common} type="color" className="color-input" value={/^#[0-9a-f]{6}$/i.test(value) ? value : "#8b8da3"} onChange={(e) => set(f.key, e.target.value)} aria-label={`${f.label} picker`} />
-            <div className="swatches" role="group" aria-label="Preset colours">
-              {COLOR_PRESETS.map((c) => (
-                <button key={c} type="button" className={`swatch ${value.toLowerCase() === c ? "is-on" : ""}`} style={{ background: c }} aria-label={`Use colour ${c}`} aria-pressed={value.toLowerCase() === c} onClick={() => set(f.key, c)} />
-              ))}
-            </div>
-          </div>
+          <ColorField id={common.id} label={f.label} value={value} onChange={(v) => set(f.key, v)} onBlur={common.onBlur} disabled={common.disabled} invalid={!!err} describedBy={common["aria-describedby"]} />
         ) : (
           <input
             {...common}

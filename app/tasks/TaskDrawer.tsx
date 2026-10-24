@@ -13,6 +13,7 @@ import LabelsInput from "./LabelsInput";
 import LinksEditor from "./LinksEditor";
 import { AssigneeChip, PointsChip, StatusPill } from "./TaskBits";
 import type { Availability, Person, TaskInput, WorkTask } from "./types";
+import type { TeamOption } from "../teams/types";
 
 export type DrawerTarget = { mode: "create"; parentId: string | null } | { mode: "edit"; id: string };
 
@@ -20,6 +21,7 @@ interface Props {
   target: DrawerTarget;
   tasks: WorkTask[];
   people: Person[];
+  teams: TeamOption[];
   config: TaskConfig;
   onClose: () => void;
   onSaved: (message: string, task: WorkTask) => void;
@@ -33,7 +35,7 @@ const toInput = (t: WorkTask): TaskInput => ({
   assigneeId: t.assigneeId, labels: t.labels, links: t.links, startDate: t.startDate, dueDate: t.dueDate,
 });
 
-export default function TaskDrawer({ target, tasks, people, config, onClose, onSaved, onNavigate, onDelete, onToggleDone }: Props) {
+export default function TaskDrawer({ target, tasks, people, teams, config, onClose, onSaved, onNavigate, onDelete, onToggleDone }: Props) {
   const task = target.mode === "edit" ? tasks.find((t) => t.id === target.id) : undefined;
   const parentId = target.mode === "create" ? target.parentId : task?.parentId ?? null;
   const parent = parentId ? tasks.find((t) => t.id === parentId) : undefined;
@@ -180,7 +182,7 @@ export default function TaskDrawer({ target, tasks, people, config, onClose, onS
 
             <div className="field">
               <label htmlFor="f-assigneeId">Assignee</label>
-              <AssigneePicker people={people} value={form.assigneeId} availability={availability} hasWindow={hasWindow} invalid={!!err("assigneeId")} onChange={(id) => set("assigneeId", id)} />
+              <AssigneePicker people={people} teams={teams} value={form.assigneeId} availability={availability} hasWindow={hasWindow} invalid={!!err("assigneeId")} onChange={(id) => set("assigneeId", id)} />
               {err("assigneeId") ? (
                 <span className="field-error" role="alert">{err("assigneeId")}</span>
               ) : selectedWarning ? (
