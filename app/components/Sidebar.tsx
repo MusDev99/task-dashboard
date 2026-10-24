@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { logout } from "../../lib/auth-actions";
 
 const navItems = [
   {
@@ -98,6 +99,8 @@ export default function Sidebar() {
     }
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
+
+  if (pathname.startsWith("/login")) return null; // signed-out screen has no navigation
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -276,6 +279,9 @@ export default function Sidebar() {
             Roster → availability → tasks
           </div>
         </div>
+        <form action={logout} style={{ marginTop: "0.75rem" }}>
+          <button type="submit" className="btn sidebar-signout">Sign out</button>
+        </form>
       </div>
     </>
   );

@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "seed:data": "node --env-file=.env scripts/seed-data.ts",
-    "migrate:settings": "node --env-file=.env scripts/migrate-settings.ts"
+    "migrate:settings": "node --env-file=.env scripts/migrate-settings.ts",
+    "test": "node --test \"tests/**/*.test.ts\"",
+    "verify": "tsc --noEmit && npm test && npm run build",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "next": "^16.1.6",

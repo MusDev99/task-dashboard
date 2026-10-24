@@ -7,6 +7,7 @@ import { USER_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
 import { cleanUserInput, validateUserInput, type FieldErrors, type UserInput, type UserRefs } from "./validation";
 import { getLocations, getRoles } from "./settings";
 import type { User } from "../app/lib/types";
+import { requireSession } from "./auth";
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T }
@@ -33,6 +34,7 @@ const fail = (e: unknown): { ok: false; message: string } => {
 };
 
 export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<User>> {
+  await requireSession();
   const input = cleanUserInput(raw);
   try {
     const users = await getUsers();
@@ -63,6 +65,7 @@ export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<
 }
 
 export async function updateUser(id: string, raw: Partial<UserInput>): Promise<ActionResult<User>> {
+  await requireSession();
   const input = cleanUserInput(raw);
   try {
     const users = await getUsers();
@@ -96,6 +99,7 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
 
 /** Hard delete: removes the user's tasks first, then the user, so no task is ever orphaned. */
 export async function deleteUser(id: string): Promise<ActionResult<{ tasksDeleted: number }>> {
+  await requireSession();
   try {
     // Dependents first, so a failure never leaves rows pointing at a deleted user.
     await deleteRowsWhere("roster", "userId", id).catch((e) => {

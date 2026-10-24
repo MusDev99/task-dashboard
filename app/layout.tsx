@@ -17,6 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WorkForce Management",
   description: "Plan team capacity from the roster and assign tasks by availability.",
+  robots: { index: false, follow: false }, // private staff data: never index
 };
 
 export default function RootLayout({

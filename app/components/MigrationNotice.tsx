@@ -1,7 +1,9 @@
 import { readTable } from "../../lib/store";
+import { isAuthed } from "../../lib/auth";
 
 /** Shown app-wide while the users tab still has the pre-Settings `stationCode` column. */
 export default async function MigrationNotice() {
+  if (!(await isAuthed())) return null; // never read the sheet for signed-out visitors (e.g. on /login)
   let legacy = false;
   try {
     const rows = await readTable("users");

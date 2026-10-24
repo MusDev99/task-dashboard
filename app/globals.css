@@ -1075,3 +1075,12 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
   .settings-table td:first-child { padding-right: 48px; }
   .settings-form { padding: 1rem; }
 }
+
+/* ─── Sign in ────────────────────────────────────── */
+.login-wrap { min-height: 100dvh; display: grid; place-items: center; padding: 1rem; }
+.login-card { width: 100%; max-width: 400px; background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem; display: grid; gap: 1rem; }
+.login-title { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.login-sub { margin: 0; color: var(--text-secondary); font-size: 0.875rem; }
+.login-form { display: grid; gap: 1rem; }
+.login-submit { width: 100%; min-height: var(--touch); }
+.sidebar-signout { width: 100%; min-height: var(--touch); }

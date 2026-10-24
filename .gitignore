@@ -1,0 +1,21 @@
+# dependencies & build output
+node_modules/
+.next/
+out/
+.netlify/
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets: never commit
+.env
+.env.*
+!.env.example
+keys/
+*.pem
+google-service-account*.json
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*
