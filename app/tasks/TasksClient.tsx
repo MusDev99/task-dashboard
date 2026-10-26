@@ -54,6 +54,7 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
   const [assignee, setAssignee] = useState(params.get("assignee") ?? "");
   const [team, setTeam] = useState(teams.some((t) => t.id === params.get("team")) ? params.get("team")! : "");
   const [label, setLabel] = useState(params.get("label") ?? "");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<View>(oneOf(params.get("view"), ["list", "kanban", "calendar"] as const, "kanban"));
   const [sort, setSort] = useState<TaskSort>(() => {
     const [k, d] = (params.get("sort") ?? "code:desc").split(":");
@@ -191,6 +192,8 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
   const pickView = (v: View) => { setView(v); setPage(1); };
   const clearFilters = () => { setQ(""); setSearch(""); setStatus("all"); setAssignee(""); setTeam(""); setLabel(""); setPage(1); };
 
+  const activeFilters = [assignee, team, label].filter(Boolean).length;
+
   return (
     <div className="page" style={{ maxWidth: 1400 }}>
       <div className="page-header task-page-header">
@@ -201,7 +204,7 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
             <p className="page-subtitle">Plan, coordinate and assign operational tasks, checklists and timelines — based on who&apos;s available on the roster.</p>
           </div>
         </div>
-        <button type="button" className="btn btn-primary btn-lg" onClick={() => setDrawer({ mode: "create", parentId: null })}>
+        <button type="button" className="btn btn-primary btn-lg fab" onClick={() => setDrawer({ mode: "create", parentId: null })}>
           <PlusIcon size={16} /> Create Task
         </button>
       </div>
@@ -213,6 +216,10 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
           <SearchIcon size={16} />
           <input className="search-input" type="search" placeholder="Search by title, code, description, label or subtasks…" aria-label="Search tasks" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        <button type="button" className="btn filter-toggle" aria-expanded={filtersOpen} aria-controls="task-filters" onClick={() => setFiltersOpen((o) => !o)}>
+          Filters{activeFilters > 0 ? ` · ${activeFilters}` : ""}
+        </button>
+        <div id="task-filters" className={`filter-group ${filtersOpen ? "is-open" : ""}`}>
         <select className="select" aria-label="Filter by assignee" value={assignee} onChange={(e) => { setAssignee(e.target.value); setPage(1); }}>
           <option value="">All assignees</option>
           <option value="unassigned">Unassigned</option>
@@ -228,6 +235,7 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
           <option value="">All labels</option>
           {allLabels.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
+        </div>
         {saving > 0 && <span className="field-hint" aria-live="polite" style={{ color: "var(--accent-amber)" }}>Saving…</span>}
       </div>
 

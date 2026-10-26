@@ -214,6 +214,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 
 /* ─── App shell (sidebar / top bar / bottom tabs) ── */
+/* Stacking order: page content < FAB (40) < top/bottom bars (50) < nav drawer (60-61) < menus (80)
+   < overlays (90) < drawers/modals/sheets (100) < toasts (120). Overlays must always cover the shell. */
 /* Pure CSS breakpoints: the server HTML is correct on every width (no hydration flash). */
 .main-content {
   flex: 1;
@@ -253,23 +255,23 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 @media (max-width: 768px) {
   .mobile-topbar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: calc(56px + env(safe-area-inset-top));
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50; height: calc(56px + env(safe-area-inset-top));
     padding: env(safe-area-inset-top) 0.75rem 0; display: flex; align-items: center; gap: 10px;
     background: var(--bg-sidebar); border-bottom: 1px solid var(--border-subtle);
   }
   .mobile-topbar .icon-btn { color: var(--text-primary); }
   .mobile-topbar .brand-name { font-size: 0.95rem; }
   .sidebar {
-    position: fixed; top: 0; left: 0; z-index: 1002; width: min(280px, 85vw);
+    position: fixed; top: 0; left: 0; z-index: 61; width: min(280px, 85vw);
     padding-top: calc(1.5rem + env(safe-area-inset-top)); padding-bottom: env(safe-area-inset-bottom);
     transform: translateX(-100%); visibility: hidden;
     transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 280ms;
   }
   .sidebar.is-open { transform: none; visibility: visible; transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1); }
   .sidebar .sidebar-close { display: inline-flex; }
-  .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 1001; background: rgba(0, 0, 0, 0.6); animation: fade 150ms ease-out; }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.6); animation: fade 150ms ease-out; }
   .bottom-nav {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     padding-bottom: env(safe-area-inset-bottom); background: var(--bg-sidebar); border-top: 1px solid var(--border-subtle);
   }
   .bottom-nav-link {
@@ -663,9 +665,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 /* Picker: popover on desktop, bottom sheet on phones */
 .picker-overlay { background: transparent; backdrop-filter: none; z-index: 95; }
-.picker-overlay.is-sheet { background: rgba(5, 6, 12, 0.55); z-index: 1003; }
+.picker-overlay.is-sheet { background: rgba(5, 6, 12, 0.55); z-index: 95; }
 .picker.picker-sheet {
-  left: 0; right: 0; bottom: 0; top: auto; width: auto; z-index: 1004; max-height: min(75dvh, 560px);
+  left: 0; right: 0; bottom: 0; top: auto; width: auto; z-index: 100; max-height: min(75dvh, 560px);
   padding: 8px 10px calc(10px + env(safe-area-inset-bottom)); border-radius: var(--radius-xl) var(--radius-xl) 0 0; border-bottom: 0;
   animation: sheetUp 200ms cubic-bezier(0.4, 0, 0.2, 1); overscroll-behavior: contain;
 }
@@ -753,8 +755,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 @media (max-width: 768px) {
   .wb-cards { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-  .wb-card { padding: 0.9rem; }
-  .wb-card-value { font-size: 1.5rem; }
+  .wb-card { padding: 0.75rem 0.9rem; }
+  .wb-card-top { font-size: 0.78rem; }
+  .wb-card-value { font-size: 1.45rem; margin-top: 0.25rem; }
   .wb-controls { width: 100%; }
   .wb-controls .btn { flex: 1 1 auto; }
   .wb-search { max-width: none; }
@@ -922,7 +925,6 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .subtask-title:focus-visible { box-shadow: var(--focus-ring); border-radius: 4px; }
 
 @media (max-width: 768px) {
-  .task-page-header .btn-lg { width: 100%; }
   .task-heading-icon { width: 44px; height: 44px; }
   .task-bar { padding: 0.5rem; }
   .seg { width: 100%; }
@@ -1123,4 +1125,123 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
   .stepper { padding: 0.75rem 1rem; gap: 0.5rem; }
   .stepper .step + .step::before { width: 12px; margin-left: -0.5rem; }
   .step { padding-right: 0.75rem; font-size: 0.82rem; }
+}
+
+.stat-card-compact { padding: 1.25rem; }
+.stat-card-body { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
+.stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+.stat-value { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.stat-hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.35rem; }
+.stat-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+/* ═══ Mobile-first patterns shared by every module (≤ 768px) ═══════════════ */
+.filter-toggle { display: none; }
+.filter-group { display: contents; }
+.mobile-only { display: none; }
+@media (max-width: 768px) {
+  /* Compact page header: the title + one line, never a wall of text above the data. */
+  .page-header { margin-bottom: 1rem; gap: 0.75rem; }
+  .page-title { font-size: 1.4rem; }
+  .page-subtitle { font-size: 0.82rem; }
+  .task-heading-icon { display: none !important; }
+
+  /* Primary action becomes an extended FAB above the tab bar (Fitts: thumb zone, always visible). */
+  .page-header .fab {
+    position: fixed; z-index: 40; right: 16px; bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
+    min-height: 52px; padding: 0 1.25rem; border-radius: var(--radius-full); box-shadow: 0 8px 24px rgba(108, 99, 255, 0.45);
+  }
+  .page-header .fab.btn-lg { width: auto; }
+  .main-content:has(.fab) { padding-bottom: calc(56px + env(safe-area-inset-bottom) + 88px); }
+
+  /* Stat cards: one swipeable row instead of four stacked cards (Miller: glanceable, not dominant). */
+  .stats-grid.stats-compact {
+    display: flex !important; overflow-x: auto; gap: 0.6rem !important; margin-bottom: 1rem !important;
+    scroll-snap-type: x proximity; scrollbar-width: none; overscroll-behavior-x: contain; margin-inline: -1rem; padding-inline: 1rem;
+  }
+  .stats-grid.stats-compact::-webkit-scrollbar { display: none; }
+  .stats-compact .stat-card-compact { flex: 0 0 42%; min-width: 140px; padding: 0.8rem 0.9rem !important; scroll-snap-align: start; }
+  .stats-compact .stat-value { font-size: 1.5rem; }
+  .stats-compact .stat-hint, .stats-compact .stat-icon { display: none !important; }
+
+  /* Filters collapse behind one toggle (Hick). */
+  .filter-toggle { display: inline-flex; }
+  .filter-group { display: none; }
+  .filter-group.is-open { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; width: 100%; }
+  .filter-group.is-open > :only-child, .filter-group.is-open > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .filter-group .select { width: 100%; }
+  .toolbar { gap: 0.6rem; }
+  .toolbar .search-wrap { flex: 1 1 0; min-width: 0; flex-basis: auto !important; }
+  .mobile-only { display: revert; }
+
+  /* Drawers/modals: full width, clear of notches and the home indicator. */
+  .drawer { width: 100vw; border-left: 0; padding-top: env(safe-area-inset-top); }
+  .drawer-head { padding: 1rem; }
+  .drawer-body { padding: 1rem; }
+  .drawer-foot { padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom)); }
+  .drawer-foot .btn { flex: 1; min-height: 48px; }
+  .modal { top: auto; bottom: 0; left: 0; transform: none; width: 100vw; border-radius: var(--radius-xl) var(--radius-xl) 0 0; padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); animation: sheetUp 200ms cubic-bezier(0.4, 0, 0.2, 1); }
+  .modal-actions .btn { flex: 1; min-height: 48px; }
+
+  /* Inputs at 16px so iOS doesn't zoom on focus. */
+  .input, .select, .search-input, textarea { font-size: 16px !important; }
+}
+
+/* Tasks calendar agenda (phones only) */
+.cal-agenda { display: none; }
+.cal-agenda-day { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden; }
+.cal-agenda-day.is-today { border-color: var(--accent-indigo); }
+.cal-agenda-day h4 { display: flex; justify-content: space-between; align-items: center; margin: 0; padding: 0.7rem 0.9rem; font-size: 0.85rem; background: var(--bg-secondary); border-bottom: 1px solid var(--border-subtle); }
+.cal-agenda-day h4 span { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+.cal-agenda-day ul { list-style: none; margin: 0; padding: 0; }
+.cal-agenda-day li { display: flex; align-items: center; gap: 8px; padding-right: 0.75rem; }
+.cal-agenda-day li + li { border-top: 1px solid var(--border-subtle); }
+.cal-agenda-task { all: unset; box-sizing: border-box; flex: 1; min-width: 0; min-height: 52px; display: flex; align-items: center; gap: 8px; padding: 0.4rem 0.75rem; border-left: 3px solid; cursor: pointer; }
+.cal-agenda-task:focus-visible { box-shadow: inset var(--focus-ring); }
+.cal-agenda-title { min-width: 0; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (max-width: 768px) {
+  /* Tasks list: table rows become cards (code + menu / title / status · assignee · points · dates). */
+  .task-table thead { display: none; }
+  .task-table, .task-table tbody { display: block; }
+  .task-table tr {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "code menu" "title title" "status assignee" "points dates";
+    gap: 0.5rem 0.75rem; padding: 0.85rem 1rem; border-bottom: 1px solid var(--border-subtle);
+  }
+  .task-table tr.is-subrow { padding-left: 2rem; background: rgba(255, 255, 255, 0.015); }
+  .task-table td { display: block; padding: 0 !important; border: 0 !important; min-width: 0; }
+  .task-table .task-code-cell { grid-area: code; display: flex; align-items: center; gap: 6px; }
+  .task-table .is-subrow .task-code-cell { padding-left: 0 !important; }
+  .task-table .task-menu-cell { grid-area: menu; justify-self: end; margin: -6px -8px 0 0; }
+  .task-table .tree-spacer:empty { display: none; }
+  .task-table .task-title-cell { grid-area: title; }
+  .task-table .task-status-cell { grid-area: status; }
+  .task-table .task-assignee-cell { grid-area: assignee; justify-self: end; align-self: center; }
+  .task-table .task-points-cell { grid-area: points; align-self: center; }
+  .task-table .task-dates { grid-area: dates; justify-self: end; align-self: center; text-align: right; }
+  .task-table .select-sm { width: 100%; min-height: var(--touch); }
+  .task-table .tree-toggle { min-width: var(--touch); min-height: var(--touch); }
+  .task-table .assignee-name { max-width: 120px; }
+
+  /* Calendar: agenda instead of the month grid. */
+  .cal-agenda { display: grid; gap: 0.75rem; }
+  .cal-grid-wrap { display: none; }
+  .cal-head { justify-content: space-between; }
+
+  /* Kanban: one swipeable lane per screen. */
+  .kanban {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 86%; gap: 0.75rem;
+    scroll-snap-type: x mandatory; overscroll-behavior-x: contain; margin-inline: -1rem; padding-inline: 1rem; scroll-padding-inline: 1rem;
+  }
+  .kanban-lane { scroll-snap-align: start; padding: 0.85rem; min-height: 200px; }
+
+  /* Users cards: compact rows. */
+  .user-grid { gap: 0.6rem; }
+  .user-grid.grid-mobile-only { padding: 0.6rem !important; }
+  .user-card { padding: 0.9rem 1rem; gap: 0.6rem; }
+  .user-card .avatar-lg { width: 44px; height: 44px; font-size: 0.9rem; }
+  .user-card-stats { display: flex; gap: 1rem; padding-top: 0.6rem; text-align: left; }
+  .user-card-stats > div { display: flex; flex-direction: column-reverse; min-width: 0; }
+
+  /* Status / view segmented controls: thumb-sized, scroll sideways. */
+  .seg button { min-height: var(--touch); }
 }

@@ -60,16 +60,16 @@ export default function ListTreeView({ tasks, subtasksOf, people, config, today,
             {subs.length > 0 && <span className="sub-progress">{subs.filter((s) => s.status === doneKey).length}/{subs.length} subtasks</span>}
           </div>
         </td>
-        <td>
+        <td className="task-status-cell">
           <label className="sr-only" htmlFor={`st-${t.id}`}>Status of {t.code}</label>
           <select id={`st-${t.id}`} className="select select-sm" value={t.status} style={{ borderColor: config.statuses.find((s) => s.key === t.status)?.color }} onChange={(e) => actions.onStatus(t, e.target.value)}>
             {config.statuses.filter((s) => s.active || s.key === t.status).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
         </td>
-        <td><AssigneeChip person={t.assigneeId ? people.get(t.assigneeId) : undefined} /></td>
-        <td><PointsChip points={t.storyPoints} config={config} /></td>
+        <td className="task-assignee-cell"><AssigneeChip person={t.assigneeId ? people.get(t.assigneeId) : undefined} /></td>
+        <td className="task-points-cell"><PointsChip points={t.storyPoints} config={config} /></td>
         <td className={`task-dates ${overdue ? "is-overdue" : ""}`}>{dateRange(t.startDate, t.dueDate, today) ?? <span className="muted">No dates</span>}{overdue && <span className="overdue-tag">Overdue</span>}</td>
-        <td><TaskMenu task={t} config={config} actions={actions} /></td>
+        <td className="task-menu-cell"><TaskMenu task={t} config={config} actions={actions} /></td>
       </tr>
     );
   };
