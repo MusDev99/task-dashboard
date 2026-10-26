@@ -146,7 +146,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
           <h1 className="page-title">Users</h1>
           <p className="page-subtitle">Manage people, their access status, location and role.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}>
+        <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
           <PlusIcon size={16} /> Add user
         </button>
       </div>

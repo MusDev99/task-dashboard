@@ -12,7 +12,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 ## Data rules
 - Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + `teams`, `team_members` + legacy `tasks` = quiz completions. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
 - All data access goes through `lib/store.ts` (`readTable`, `appendRow`, `updateRowById`, `upsertRowsById`, `deleteRowsWhere`, `deleteRowsByIds`, `ensureTab`, `writeTable`). Never call the data-store API elsewhere. Prefer the batch helpers for multi-row edits (few API calls, not N).
-- Reads: `lib/actions.ts` (typed `User` / `TaskCompletion`; `loadDirectory()` reports load failures). Writes: server actions in `lib/*-actions.ts` (`"use server"`).
+- Reads: `lib/actions.ts` (typed `User`; `loadUsers()` / `loadWorkTasks()` / `loadTeams()` report load failures). Writes: server actions in `lib/*-actions.ts` (`"use server"`).
 - **Validate on the server** (`lib/validation.ts`) — client validation is only for UX. Trim input, check uniqueness, never trust the client.
 - Writes store values exactly as typed (no reinterpretation). Dates keep the stored format `YYYY-MM-DD HH:mm:ss.SSS` (UTC).
 - **Roster:** one row per user per day, `id = "{userId}_{YYYY-MM-DD}"` (so upserts can't duplicate); an empty cell = no row. The `roster` tab is created lazily by `ensureTab`. Deleting a user also deletes their roster rows.
@@ -38,7 +38,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 ## Code conventions
 - Server components fetch; client components (`"use client"`) handle interaction. Keep the boundary narrow.
 - Strict TypeScript: no `any`, no `@ts-ignore`. Fix the type instead.
-- Reuse before adding: `app/components/ui/*` (`ActionMenu` portal menu, `Pagination`, `ConfirmDialog`, `Toast`/`useToasts`, `useFocusTrap` — stacked overlays: only the top-most trap handles keys, `useDismiss`, `Avatar`, `Icons`), `app/lib/ui.ts` (avatars, `displayName`), `app/lib/merit.ts` (legacy scoring). `app/users/*` and `app/tasks/*` are the reference admin implementations.
+- Reuse before adding: `app/components/ui/*` (`ActionMenu` portal menu, `Pagination`, `ConfirmDialog`, `Toast`/`useToasts`, `useFocusTrap` — stacked overlays: only the top-most trap handles keys, `useDismiss`, `Avatar`, `Icons`, `StatCard`), `app/lib/ui.ts` (avatars, `displayName`). `app/users/*` and `app/tasks/*` are the reference admin implementations.
 - Feature code lives next to its route (`app/<module>/`); cross-cutting logic in `lib/`.
 - Stored names may end with `" -"`; always display via `displayName()`.
 
@@ -66,7 +66,13 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 
 **Grids (e.g. roster)**: sticky header + first column, drag/click to edit in place with an anchored picker, optimistic updates that roll back on failure (`useOptimistic`), keyboard parity (arrows, Enter, Delete, Esc), code chips always show text (not just colour).
 
-**Responsive**: design for 375px as well as desktop. Tables collapse to cards below 768px, drawers go full-width, no horizontal page scroll. Layout switches are **CSS media queries, not JS width checks** (the app shell/sidebar renders correctly from the server). On phones: top bar + bottom tab bar (fixed, safe-area aware — `.main-content` pads for both), pickers become bottom sheets, secondary toolbar actions go into one `ActionMenu`.
+**Responsive**: design for 375px as well as desktop. Tables collapse to cards below 768px, drawers go full-width, no horizontal page scroll. Layout switches are **CSS media queries, not JS width checks** (the app shell/sidebar renders correctly from the server). On phones: top bar + bottom tab bar (fixed, safe-area aware — `.main-content` pads for both), pickers and confirm dialogs become bottom sheets, drawers go full-screen with a sticky footer, secondary toolbar actions go into one `ActionMenu`. Shared mobile patterns (all in `globals.css`, reuse them on new pages):
+  - **Primary action** → add `fab` to the page-header primary button: it becomes a floating action button above the tab bar.
+  - **Stat cards** → `StatCard` inside `.stats-grid.stats-compact`: a swipeable strip on phones (value only).
+  - **Filters** → wrap selects in `.filter-group` with a `.filter-toggle` button ("Filters · n"): collapsed on phones, inline on desktop.
+  - **Tables** → collapse to cards (`grid-template-areas` per row, see `.task-table`) or a `grid-mobile-only` card view; calendars → agenda list; kanban → one swipeable lane per screen.
+  - **Stacking order** (never use 1000+): content < FAB 40 < top/bottom bars 50 < nav drawer 60–61 < menus 80 < overlays 90 < drawers/modals/sheets 100 < toasts 120. Overlays must always cover the shell.
+  - Inputs are 16px on phones (no iOS focus zoom).
 
 **Performance (60fps)**: no `backdrop-filter` on scrolling content, no `transition: all` (list properties), memoise large lists by row with primitive props, compute per-month/per-day labels once, avoid reading tables a page doesn't display.
 

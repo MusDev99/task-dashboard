@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { deleteTeam } from "../../lib/team-actions";
 import TeamTable, { type Sort, type SortKey } from "./TeamTable";
@@ -13,28 +13,12 @@ import { useToasts } from "../components/ui/useToasts";
 import { SearchIcon, PlusIcon, TableIcon, GridIcon, UsersIcon, AlertIcon, UserCheckIcon, UserXIcon, SparkIcon } from "../components/ui/Icons";
 import { displayName } from "../lib/ui";
 import type { TeamPerson, TeamRow } from "./types";
+import StatCard from "../components/ui/StatCard";
 
 type View = "table" | "grid";
 
 const oneOf = <T extends string>(v: string | null, options: readonly T[], fallback: T): T =>
   options.includes(v as T) ? (v as T) : fallback;
-
-function Card({ label, value, hint, color, icon }: { label: string; value: number | string; hint: string; color: string; icon: ReactNode }) {
-  return (
-    <div className="stat-card stat-card-compact" style={{ padding: "1.25rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.75rem" }}>
-        <div>
-          <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>{label}</div>
-          <div style={{ fontSize: "1.9rem", fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.1 }}>{value}</div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.35rem" }}>{hint}</div>
-        </div>
-        <div className="stat-icon" style={{ width: 40, height: 40, borderRadius: "var(--radius-md)", background: `color-mix(in srgb, ${color} 14%, transparent)`, color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function TeamsClient({ teams, people, loadError }: { teams: TeamRow[]; people: TeamPerson[]; loadError: boolean }) {
   // Filter/sort/page state is mirrored to the URL with history.replaceState (shareable, no server round-trip).
@@ -137,7 +121,7 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
           <h1 className="page-title">Teams</h1>
           <p className="page-subtitle">Group registered people into teams. A person can be in several teams.</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}>
+        <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
           <PlusIcon size={16} /> New team
         </button>
       </div>
@@ -149,10 +133,10 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
       )}
 
       <div className="stats-grid stats-compact" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-        <Card label="Teams" value={teams.length} hint="All teams" color="var(--accent-indigo)" icon={<UsersIcon size={20} />} />
-        <Card label="In a team" value={stats.inTeam} hint={`of ${stats.active} active people`} color="var(--accent-emerald)" icon={<UserCheckIcon size={20} />} />
-        <Card label="Without a team" value={stats.without} hint="Active people not in any team" color="var(--accent-amber)" icon={<UserXIcon size={20} />} />
-        <Card label="Average size" value={stats.avg} hint="Members per team" color="var(--accent-pink)" icon={<SparkIcon size={20} />} />
+        <StatCard label="Teams" value={teams.length} hint="All teams" color="var(--accent-indigo)" icon={<UsersIcon size={20} />} />
+        <StatCard label="In a team" value={stats.inTeam} hint={`of ${stats.active} active people`} color="var(--accent-emerald)" icon={<UserCheckIcon size={20} />} />
+        <StatCard label="Without a team" value={stats.without} hint="Active people not in any team" color="var(--accent-amber)" icon={<UserXIcon size={20} />} />
+        <StatCard label="Average size" value={stats.avg} hint="Members per team" color="var(--accent-pink)" icon={<SparkIcon size={20} />} />
       </div>
 
       <div className="toolbar" role="search">
