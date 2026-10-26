@@ -31,7 +31,7 @@ export default function StatCards({ users }: { users: UserRow[] }) {
   const pct = users.length ? Math.round((active / users.length) * 100) : 0;
   return (
     <div className="stats-grid stats-compact" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.5rem" }}>
-      <Card label="Total users" value={users.length} hint="All registered learners" color="var(--accent-indigo)" icon={<UsersIcon size={20} />} />
+      <Card label="Total users" value={users.length} hint="All registered people" color="var(--accent-indigo)" icon={<UsersIcon size={20} />} />
       <Card label="Active" value={active} hint={`${pct}% of all users`} color="var(--accent-emerald)" icon={<CheckIcon size={20} />} />
       <Card label="Inactive" value={users.length - active} hint="Deactivated accounts" color="var(--accent-amber)" icon={<PauseIcon size={20} />} />
       <Card label="New this month" value={users.filter((u) => isThisMonth(u.joinedDate)).length} hint="Joined in the current month" color="var(--accent-pink)" icon={<SparkIcon size={20} />} />

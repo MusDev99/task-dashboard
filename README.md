@@ -2,19 +2,18 @@
 
 A resource-management system for small and medium teams: **plan work capacity from the roster, then assign tasks by availability.** Built with Next.js (App Router), React 19, Tailwind CSS 4 and TypeScript. Data is kept in a managed data store with one table per entity.
 
-> The original gamified quiz leaderboard is still available at `/leaderboard`. It reads the legacy `tasks` table (completed quizzes) and is separate from work tasks.
+**Installable (PWA), mobile-first.** On a phone, open the app and choose *Add to Home Screen* / *Install app*: it launches full-screen with a bottom tab bar (Home, Tasks, Roster, Users, Teams). The roster opens in a one-day list with a bottom-sheet picker; the month grid is one tap away.
 
 ## Features
 
 | Area | Route | What it does |
 |---|---|---|
-| **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. Below it: the legacy leaderboard stats. |
-| **Roster** | `/roster` | Month grid of every active person. Click or drag cells to assign a shift or leave, `+` above a date to assign everyone, **Clear schedule** to bulk-remove, **Export / Upload CSV**. One record per person per day. |
+| **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. |
+| **Roster** | `/roster` | Two views (choice kept in `?view=`): **Day** (default on phones) — swipeable day strip, every person as a large tap row, per-code head-count, tap a row to set the code in a bottom sheet, *Set for all shown*; **Month** (default on desktop) — grid of every active person, click or drag cells to assign a shift or leave, `+` above a date to assign everyone. **Clear schedule** to bulk-remove, **Export / Upload CSV** (in the ⋮ menu on phones). One record per person per day. |
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views. Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. |
-| **Users** | `/users` | Admin table/grid with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
+| **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
 | **Teams** | `/teams` | Group registered users into teams (name, description, colour, optional lead). A person can be in several teams. Cards (lead + members) or table with stats, search, member filter, sorting and pagination; add/edit in a two-step drawer (details → members, crown to pick the lead). Teams power the **team filter** on Roster and Tasks and narrow the task assignee picker (tasks still have one personal assignee, never a team). |
 | **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
-| **Leaderboard** | `/leaderboard` | Legacy merit-score ranking. |
 
 ## Data store setup
 
@@ -28,7 +27,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | Table | Purpose | Created |
 |---|---|---|
 | `users` | People (id, email, name, employeeId, locationId, roleId, …) | `seed:data` |
-| `tasks` | Legacy quiz completions (leaderboard) | `seed:data` |
+| `tasks` | Legacy quiz completions (no longer shown; rows are still removed when a user is deleted) | `seed:data` |
 | `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
 | `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
@@ -93,8 +92,9 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ## Project structure
 
-- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `teams/`, `settings/`, `whereabouts/`, `leaderboard/`
-- `app/components/` shared UI (sidebar, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
+- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `teams/`, `settings/`, `whereabouts/`, `manifest.ts` (PWA manifest)
+- `public/sw.js` service worker (caches build assets + icons only), `public/offline.html`, `public/icons/` app icons
+- `app/components/` shared UI (sidebar + mobile top bar/bottom tabs, `ServiceWorker.tsx` registration, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
 - `lib/` server logic: `store.ts` (data-store client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), pure helpers (`teams.ts`, `team-validation.ts`, `capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
 - `json/` seed defaults only (settings live in the data store once migrated)
 - `scripts/` one-off seed and migration scripts
@@ -107,7 +107,20 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-24.md`).
 
+## Progressive Web App
+
+| Piece | Where | Notes |
+|---|---|---|
+| Manifest | `app/manifest.ts` → `/manifest.webmanifest` | name, icons (192/512 + maskable + SVG), standalone, theme colour, Roster/Tasks shortcuts |
+| Service worker | `public/sw.js` (registered in production only, when the page is idle) | cache-first for `/_next/static/*` and `/icons/*`; **pages and server actions are never cached** (private staff data) — offline navigations show `public/offline.html` |
+| Public files | `proxy.ts` matcher | manifest, `sw.js`, `offline.html` and `icons/` are served without a session |
+| Headers | `next.config.ts` | `sw.js` is `no-cache` (updates roll out on next visit); CSP adds `worker-src 'self'` and `manifest-src 'self'` |
+
+To ship a service-worker change that must evict old caches, bump `VERSION` in `public/sw.js`.
+
 ## Changelog
+
+- **v0.3.0 · PWA, mobile-first roster, leaderboard removed**: installable app (manifest, icons, service worker, offline page); CSS-only responsive shell (no hydration flash) with a bottom tab bar on phones; roster **Day view** with swipeable day strip and bottom-sheet picker, secondary actions in a ⋮ menu; the leaderboard, merit score and quiz-history UI are gone (`/leaderboard` → 404; Users show role instead of score; the user page is a profile); performance: memoised roster rows (editing/dragging re-renders one row, not the grid), month day labels computed once, Users/Profile/Dashboard no longer read the legacy `tasks` table, no `backdrop-filter`/`transition: all` on cards, ~5 KB of dead CSS removed.
 
 - **v0.2.0 · Teams**: new `/teams` module to create teams from registered users (many teams per person, optional lead, colour), plus a team filter on Roster and Tasks and a team selector in the task assignee picker. New tables `teams` and `team_members` are created on first use; deleting a user removes their memberships.
 - **Login redesign**: split-screen sign-in (brand and three feature points on desktop, compact on mobile) with a Google-branded button, "Redirecting…" feedback, and refusal/error banners kept inside the card.

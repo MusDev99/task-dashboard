@@ -1,6 +1,6 @@
 # WorkForce Management — project rules for Claude
 
-Resource-management system for small/medium teams: plan capacity from the **roster**, then assign **tasks** by availability. The legacy Leaderboard + merit score (backed by the `tasks` table) still works but is separate from work tasks; the old `/task` "Completions" pages were removed. Next.js 16 (App Router), React 19, Tailwind 4, TypeScript. Data lives in a managed data store (one table per entity).
+Resource-management system for small/medium teams: plan capacity from the **roster**, then assign **tasks** by availability. The legacy Leaderboard/merit score was removed; the `tasks` table (old quiz completions) is no longer read by the UI — only seeded and cleaned up when a user is deleted. Installable PWA, mobile-first. Next.js 16 (App Router), React 19, Tailwind 4, TypeScript. Data lives in a managed data store (one table per entity).
 
 ## Commands
 - `npm run dev` / `npm run build` — dev server / production build
@@ -27,7 +27,9 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - **Links** are http(s) only (`safeUrl` in `lib/links.ts`), rendered with `target="_blank" rel="noopener noreferrer"`; Jira/GitLab/GitHub detection is in `describeLink`.
 - **Availability warns, never blocks**: `lib/capacity.ts` (pure) + `getAssigneeAvailability` compute working/leave/unscheduled days over the task window from the roster, plus open story points; the picker shows it and warns, but any active person can be assigned.
 - Order multi-step writes so a failure never leaves dangling references (delete a user's `tasks` before the `users` row).
-- After a mutation, `revalidatePath` every page that shows the data (`/users`, `/`, `/leaderboard`, `/roster`, `/tasks`, `/teams`, `/settings`).
+- After a mutation, `revalidatePath` every page that shows the data (`/users`, `/`, `/roster`, `/tasks`, `/teams`, `/settings`).
+- **PWA**: manifest in `app/manifest.ts`, service worker `public/sw.js`. The SW may cache only content-hashed build assets (`/_next/static/*`) and `/icons/*` — **never pages, server-action responses or any data** (shared devices, private staff data); offline navigations get `public/offline.html`. Public static PWA files must stay excluded in the `proxy.ts` matcher. Bump `VERSION` in `sw.js` to evict old caches.
+- **Roster views**: Day (`DayView.tsx`, default on phones) and Month (`RosterGrid.tsx`, default on desktop), chosen via `useSyncExternalStore` + `matchMedia` (server snapshot `null` → skeleton, never a hydration mismatch); `?view=` / `?day=` mirror the choice. Grid rows are memoised `RosterRow`s keyed on a joined code string — keep callbacks passed to the grid stable (`useCallback`) or every row re-renders. Day labels come from `app/roster/days.ts` (`monthDays`).
 - Pages that read data export `dynamic = "force-dynamic"`.
 - **No hardcoded data** in components — everything comes from the data store. `json/` is seed/default data for migrations and for tables that don't exist yet.
 - Secrets: never read, print or commit `.env*` or `keys/`. Error messages must describe problems (lengths, found/missing markers) without echoing secret values. Credentials come from `DATA_STORE_ID` + `DATA_STORE_KEY_PATH` (credentials JSON), or on hosts without files `DATA_STORE_CLIENT_EMAIL` + `DATA_STORE_PRIVATE_KEY` (older variable names remain supported as fallbacks inside `lib/store.ts`). Document new variables in `.env.example`.
@@ -64,7 +66,9 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 
 **Grids (e.g. roster)**: sticky header + first column, drag/click to edit in place with an anchored picker, optimistic updates that roll back on failure (`useOptimistic`), keyboard parity (arrows, Enter, Delete, Esc), code chips always show text (not just colour).
 
-**Responsive**: design for 375px as well as desktop. Tables collapse to cards below 768px, drawers go full-width, no horizontal page scroll.
+**Responsive**: design for 375px as well as desktop. Tables collapse to cards below 768px, drawers go full-width, no horizontal page scroll. Layout switches are **CSS media queries, not JS width checks** (the app shell/sidebar renders correctly from the server). On phones: top bar + bottom tab bar (fixed, safe-area aware — `.main-content` pads for both), pickers become bottom sheets, secondary toolbar actions go into one `ActionMenu`.
+
+**Performance (60fps)**: no `backdrop-filter` on scrolling content, no `transition: all` (list properties), memoise large lists by row with primitive props, compute per-month/per-day labels once, avoid reading tables a page doesn't display.
 
 ## Confidentiality rule (always)
 **Never name or hint at the underlying data store / its vendor** in: UI text, error or toast messages shown to users, `README.md`, other docs, code comments, commit messages, PR descriptions, or replies to the user. Say "the data store" / "tables" / "the system". Don't put real service-account emails, project ids or ids of the store in tracked files (`.env.example` uses placeholders). Configuration variables are `DATA_STORE_*`; the seed script is `npm run seed:data`; all access goes through `lib/store.ts`. Unavoidable exceptions: that module's endpoint addresses and legacy variable fallbacks (server-only, never sent to the browser), the Google account id on users (`googleId`), **Google sign-in** (an identity provider, named by design: the button text, `GOOGLE_CLIENT_ID/SECRET`, the OAuth endpoints in `lib/oidc.ts`, `scripts/e2e/fake-google.cjs` and the setup steps in `README.md`), the avatar image host in `next.config.ts`, and the font loader.

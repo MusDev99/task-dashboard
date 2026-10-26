@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { logout } from "../../lib/auth-actions";
 import Avatar from "./ui/Avatar";
+import { useFocusTrap } from "./ui/useFocusTrap";
+import { CloseIcon } from "./ui/Icons";
 import { displayName } from "../lib/ui";
 
 interface SidebarUser {
@@ -14,9 +16,10 @@ interface SidebarUser {
   avatar: string | null;
 }
 
-const navItems = [
+const navItems: { label: string; href: string; tab?: boolean; icon: React.ReactNode }[] = [
   {
     label: "Dashboard",
+    tab: true,
     href: "/",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -29,6 +32,7 @@ const navItems = [
   },
   {
     label: "Tasks",
+    tab: true,
     href: "/tasks",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -39,6 +43,7 @@ const navItems = [
   },
   {
     label: "Roster",
+    tab: true,
     href: "/roster",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -51,6 +56,7 @@ const navItems = [
   },
   {
     label: "Users",
+    tab: true,
     href: "/users",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,6 +69,7 @@ const navItems = [
   },
   {
     label: "Teams",
+    tab: true,
     href: "/teams",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -71,15 +78,6 @@ const navItems = [
         <circle cx="19" cy="15" r="2.5" />
         <path d="M8.5 20.5a3.5 3.5 0 0 1 7 0" />
         <path d="M12 9v3M7 13.5 10 12M17 13.5 14 12" />
-      </svg>
-    ),
-  },
-  {
-    label: "Leaderboard",
-    href: "/leaderboard",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 21V12H2l10-10 10 10h-6v9H8z" />
       </svg>
     ),
   },
@@ -95,351 +93,110 @@ const navItems = [
   },
 ];
 
+/** Mounted only while the mobile drawer is open: traps Tab, closes on Esc, returns focus on close. */
+function DrawerTrap({ target, onClose }: { target: RefObject<HTMLElement | null>; onClose: () => void }) {
+  useFocusTrap(target, onClose);
+  useEffect(() => {
+    target.current?.querySelector<HTMLElement>("a,button")?.focus();
+  }, [target]);
+  return null;
+}
+
+// Layout is CSS-driven (media queries), so the server HTML is already correct on phones:
+// no JS width check, no hydration flash, no layout shift. Desktop = sticky sidebar; mobile =
+// top bar + off-canvas drawer + thumb-reachable bottom tab bar.
 export default function Sidebar({ user }: { user: SidebarUser | null }) {
   const pathname = usePathname();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [open, setOpen] = useState(false);
+  const aside = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  // Close the drawer on navigation.
+  useEffect(() => setOpen(false), [pathname]);
 
-  // Close mobile menu on route change
+  // Prevent body scroll while the drawer is open.
   useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  // Prevent body scroll when mobile menu is open
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (!open) return;
+    document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [mobileOpen]);
+  }, [open]);
 
   if (pathname.startsWith("/login")) return null; // signed-out screen has no navigation
 
-  const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
-    return pathname === href || pathname.startsWith(`${href}/`);
-  };
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
-  const sidebarContent = (
-    <>
-      {/* Logo */}
-      <div
-        style={{
-          padding: "0 1.5rem",
-          marginBottom: "2.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        <div
-          style={{
-            width: "36px",
-            height: "36px",
-            borderRadius: "var(--radius-md)",
-            background: "var(--gradient-primary)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "1.1rem",
-            fontWeight: 700,
-            flexShrink: 0,
-          }}
-        >
-          ⚡
-        </div>
-        <div>
-          <div
-            style={{
-              fontSize: "1.05rem",
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              letterSpacing: "-0.02em",
-            }}
-          >
-            WorkForce
-          </div>
-          <div
-            style={{
-              fontSize: "0.7rem",
-              color: "var(--text-muted)",
-              letterSpacing: "0.03em",
-              textTransform: "uppercase",
-            }}
-          >
-            Resource & task planning
-          </div>
-        </div>
-        {/* Close button (mobile only) */}
-        {isMobile && (
-          <button
-            onClick={() => setMobileOpen(false)}
-            aria-label="Close menu"
-            style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "none",
-              color: "var(--text-secondary)",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: "0 0.75rem" }}>
-        <div
-          style={{
-            fontSize: "0.65rem",
-            fontWeight: 600,
-            color: "var(--text-muted)",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            padding: "0 0.75rem",
-            marginBottom: "0.75rem",
-          }}
-        >
-          Menu
-        </div>
-        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "4px" }}>
-          {navItems.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "0.65rem 0.75rem",
-                    borderRadius: "var(--radius-md)",
-                    color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                    background: active ? "rgba(108, 99, 255, 0.1)" : "transparent",
-                    textDecoration: "none",
-                    fontSize: "0.875rem",
-                    fontWeight: active ? 600 : 400,
-                    transition: "all var(--transition-fast)",
-                    position: "relative",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = "rgba(255, 255, 255, 0.04)";
-                      e.currentTarget.style.color = "var(--text-primary)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = "var(--text-secondary)";
-                    }
-                  }}
-                >
-                  {active && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        width: "3px",
-                        height: "20px",
-                        borderRadius: "var(--radius-full)",
-                        background: "var(--gradient-primary)",
-                      }}
-                    />
-                  )}
-                  <span style={{ opacity: active ? 1 : 0.6, transition: "opacity var(--transition-fast)" }}>
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* Bottom info */}
-      <div
-        style={{
-          padding: "1.5rem",
-          borderTop: "1px solid var(--border-subtle)",
-          marginTop: "auto",
-        }}
-      >
-        <div
-          style={{
-            background: "var(--bg-card)",
-            borderRadius: "var(--radius-md)",
-            padding: "1rem",
-            border: "1px solid var(--border-subtle)",
-          }}
-        >
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "4px" }}>
-            WorkForce Management
-          </div>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", opacity: 0.7 }}>
-            Roster → availability → tasks
-          </div>
-        </div>
-        {user && (
-          <div className="sidebar-user">
-            <Avatar id={user.id} name={user.name} src={user.avatar} size="sm" />
-            <div style={{ minWidth: 0 }}>
-              <div className="sidebar-user-name">{displayName(user.name)}</div>
-              <div className="sidebar-user-email">{user.email}</div>
-            </div>
-          </div>
-        )}
-        {user && (
-          <form action={logout} style={{ marginTop: "0.75rem" }}>
-            <button type="submit" className="btn sidebar-signout">Sign out</button>
-          </form>
-        )}
-      </div>
-    </>
-  );
-
-  // ── Mobile layout ──
-  if (isMobile) {
-    return (
-      <>
-        {/* Top bar */}
-        <div
-          className="mobile-topbar"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "56px",
-            background: "var(--bg-sidebar)",
-            borderBottom: "1px solid var(--border-subtle)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 1rem",
-            zIndex: 1000,
-            gap: "12px",
-          }}
-        >
-          <button
-            onClick={() => setMobileOpen(true)}
-            aria-label="Open menu"
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text-primary)",
-              cursor: "pointer",
-              padding: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <div
-            style={{
-              width: "28px",
-              height: "28px",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--gradient-primary)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "0.85rem",
-              flexShrink: 0,
-            }}
-          >
-            ⚡
-          </div>
-          <div style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "-0.02em" }}>
-            WorkForce
-          </div>
-        </div>
-
-        {/* Backdrop */}
-        {mobileOpen && (
-          <div
-            onClick={() => setMobileOpen(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(0, 0, 0, 0.6)",
-              backdropFilter: "blur(4px)",
-              zIndex: 1001,
-              transition: "opacity var(--transition-base)",
-            }}
-          />
-        )}
-
-        {/* Slide-out sidebar */}
-        <aside
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "280px",
-            height: "100vh",
-            background: "var(--bg-sidebar)",
-            borderRight: "1px solid var(--border-subtle)",
-            padding: "2rem 0",
-            display: "flex",
-            flexDirection: "column",
-            zIndex: 1002,
-            transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
-            transition: "transform 300ms cubic-bezier(0.4, 0, 0.2, 1)",
-            overflowY: "auto",
-          }}
-        >
-          {sidebarContent}
-        </aside>
-      </>
-    );
-  }
-
-  // ── Desktop layout ──
   return (
-    <aside
-      style={{
-        width: "260px",
-        minHeight: "100vh",
-        background: "var(--bg-sidebar)",
-        borderRight: "1px solid var(--border-subtle)",
-        padding: "2rem 0",
-        display: "flex",
-        flexDirection: "column",
-        flexShrink: 0,
-        position: "sticky",
-        top: 0,
-        height: "100vh",
-        overflowY: "auto",
-      }}
-    >
-      {sidebarContent}
-    </aside>
+    <>
+      <header className="mobile-topbar">
+        <button type="button" className="icon-btn" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} aria-controls="app-sidebar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <span className="brand-mark brand-mark-sm" aria-hidden="true">⚡</span>
+        <span className="brand-name">WorkForce</span>
+      </header>
+
+      {open && <div className="sidebar-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />}
+      {open && <DrawerTrap target={aside} onClose={() => setOpen(false)} />}
+
+      <aside id="app-sidebar" ref={aside} className={`sidebar ${open ? "is-open" : ""}`} aria-label="Main navigation">
+        <div className="sidebar-brand">
+          <span className="brand-mark" aria-hidden="true">⚡</span>
+          <div>
+            <div className="brand-name">WorkForce</div>
+            <div className="brand-tagline">Resource &amp; task planning</div>
+          </div>
+          <button type="button" className="icon-btn sidebar-close" onClick={() => setOpen(false)} aria-label="Close menu">
+            <CloseIcon size={22} />
+          </button>
+        </div>
+
+        <nav className="sidebar-nav">
+          <div className="sidebar-section">Menu</div>
+          <ul>
+            {navItems.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <li key={item.href}>
+                  <Link href={item.href} className={`sidebar-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
+                    <span className="sidebar-link-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        <div className="sidebar-foot">
+          {user && (
+            <div className="sidebar-user">
+              <Avatar id={user.id} name={user.name} src={user.avatar} size="sm" />
+              <div style={{ minWidth: 0 }}>
+                <div className="sidebar-user-name">{displayName(user.name)}</div>
+                <div className="sidebar-user-email">{user.email}</div>
+              </div>
+            </div>
+          )}
+          {user && (
+            <form action={logout} style={{ marginTop: "0.75rem" }}>
+              <button type="submit" className="btn sidebar-signout">Sign out</button>
+            </form>
+          )}
+        </div>
+      </aside>
+
+      <nav className="bottom-nav" aria-label="Quick navigation">
+        {navItems.filter((i) => i.tab).map((item) => {
+          const active = isActive(item.href);
+          return (
+            <Link key={item.href} href={item.href} className={`bottom-nav-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
+              {item.icon}
+              <span>{item.label === "Dashboard" ? "Home" : item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    </>
   );
 }

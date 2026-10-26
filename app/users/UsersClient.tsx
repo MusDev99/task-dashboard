@@ -20,8 +20,7 @@ type View = "table" | "grid";
 const SORTERS: Record<SortKey, (a: UserRow, b: UserRow) => number> = {
   name: (a, b) => displayName(a.name).localeCompare(displayName(b.name)),
   location: (a, b) => (a.locationName ?? "~").localeCompare(b.locationName ?? "~"),
-  tasks: (a, b) => a.tasksCompleted - b.tasksCompleted,
-  score: (a, b) => a.meritScore - b.meritScore,
+  role: (a, b) => (a.roleName ?? "~").localeCompare(b.roleName ?? "~"),
   joined: (a, b) => a.joinedDate.localeCompare(b.joinedDate),
 };
 
@@ -38,7 +37,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
   const [location, setLocation] = useState(params.get("location") ?? "");
   const [sort, setSort] = useState<Sort>(() => {
     const [key, dir] = (params.get("sort") ?? "name:asc").split(":");
-    return { key: oneOf(key, ["name", "location", "tasks", "score", "joined"] as const, "name"), dir: dir === "desc" ? "desc" : "asc" };
+    return { key: oneOf(key, ["name", "location", "role", "joined"] as const, "name"), dir: dir === "desc" ? "desc" : "asc" };
   });
   const [size, setSize] = useState(Number(params.get("size")) || PAGE_SIZES[0]);
   const [page, setPage] = useState(Math.max(1, Number(params.get("page")) || 1));
@@ -131,8 +130,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
       const res = await deleteUser(target.id);
       setDeleting(null);
       if (res.ok) {
-        const n = res.data.tasksDeleted;
-        notify("success", `Deleted ${displayName(target.name)}${n ? ` and ${n} task${n === 1 ? "" : "s"}` : ""}`);
+        notify("success", `Deleted ${displayName(target.name)}`);
       } else {
         notify("error", res.message ?? "Couldn't delete this user.");
       }
@@ -232,9 +230,8 @@ export default function UsersClient({ users, options, loadError }: { users: User
 
       {deleting && (
         <ConfirmDialog title={`Delete ${displayName(deleting.name)}?`} confirmLabel="Delete user" danger pending={pending} onConfirm={confirmDelete} onCancel={() => setDeleting(null)}>
-          This permanently removes the user
-          {deleting.tasksCompleted > 0 ? ` and their ${deleting.tasksCompleted} completed task${deleting.tasksCompleted === 1 ? "" : "s"}` : ""} from the
-          the system, and updates the leaderboard. This can&apos;t be undone.
+          This permanently removes the user, their roster entries and team memberships. Their work tasks are kept but unassigned.
+          This can&apos;t be undone.
         </ConfirmDialog>
       )}
 

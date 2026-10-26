@@ -22,9 +22,12 @@ export default function CellPicker({ anchor, title, subtitle, codes, onPick, onC
     ref.current?.querySelector<HTMLElement>("button")?.focus();
   }, []);
 
+  // Phones: a bottom sheet (thumb-reachable, full width). Wider screens: a popover anchored to the cell.
+  const sheet = window.matchMedia("(max-width: 768px)").matches;
   const width = 290;
-  const left = Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8));
-  const top = Math.max(8, Math.min(anchor.bottom + 6, window.innerHeight - 400));
+  const position = sheet
+    ? undefined
+    : { left: Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8)), top: Math.max(8, Math.min(anchor.bottom + 6, window.innerHeight - 400)), width };
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -46,8 +49,8 @@ export default function CellPicker({ anchor, title, subtitle, codes, onPick, onC
 
   return (
     <>
-      <div className="overlay" style={{ background: "transparent", backdropFilter: "none", zIndex: 95 }} onClick={onClose} />
-      <div ref={ref} className="picker" role="menu" aria-label={`Set availability: ${title}`} style={{ left, top, width }} onKeyDown={onKey}>
+      <div className={`overlay picker-overlay${sheet ? " is-sheet" : ""}`} onClick={onClose} />
+      <div ref={ref} className={`picker${sheet ? " picker-sheet" : ""}`} role="menu" aria-label={`Set availability: ${title}`} style={position} onKeyDown={onKey}>
         <div className="picker-head">
           <b>{title}</b>
           <span>{subtitle}</span>
@@ -60,6 +63,11 @@ export default function CellPicker({ anchor, title, subtitle, codes, onPick, onC
         <button type="button" role="menuitem" className="picker-item danger" onClick={() => onPick(null)}>
           Clear
         </button>
+        {sheet && (
+          <button type="button" role="menuitem" className="picker-item picker-cancel" onClick={onClose}>
+            Cancel
+          </button>
+        )}
       </div>
     </>
   );

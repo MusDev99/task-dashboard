@@ -17,7 +17,7 @@ export type ActionResult<T = unknown> =
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 
 function refresh() {
-  for (const p of ["/users", "/", "/leaderboard", "/roster", "/tasks", "/teams"]) revalidatePath(p);
+  for (const p of ["/users", "/", "/roster", "/tasks", "/teams"]) revalidatePath(p);
 }
 
 async function userRefs(): Promise<UserRefs> {
@@ -98,7 +98,7 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
 }
 
 /** Hard delete: removes the user's tasks first, then the user, so no task is ever orphaned. */
-export async function deleteUser(id: string): Promise<ActionResult<{ tasksDeleted: number }>> {
+export async function deleteUser(id: string): Promise<ActionResult<null>> {
   await requireSession();
   try {
     // Dependents first, so a failure never leaves rows pointing at a deleted user.
@@ -110,11 +110,12 @@ export async function deleteUser(id: string): Promise<ActionResult<{ tasksDelete
     await unassignWorkTasks(id);
     // Team memberships go; teams they led keep going without a lead.
     await removeFromTeams(id);
-    const tasksDeleted = await deleteRowsWhere("tasks", "userId", id);
+    // Legacy quiz completions (the `tasks` table) are no longer shown, but are still cleaned up.
+    await deleteRowsWhere("tasks", "userId", id);
     const usersDeleted = await deleteRowsWhere("users", "id", id);
     if (usersDeleted === 0) return { ok: false, message: "This user no longer exists." };
     refresh();
-    return { ok: true, data: { tasksDeleted } };
+    return { ok: true, data: null };
   } catch (e) {
     return fail(e);
   }
