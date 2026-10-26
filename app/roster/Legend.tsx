@@ -12,7 +12,7 @@ export default function Legend({ codes }: { codes: ShiftCode[] }) {
   return (
     <div className="menu-wrap" ref={ref}>
       <button type="button" className="btn" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span style={{ display: "inline-flex" }} aria-hidden="true">
+        <span className="legend-dots" style={{ display: "inline-flex" }} aria-hidden="true">
           {codes.map((c) => <span key={c.code} style={{ width: 10, height: 10, borderRadius: 99, background: c.color, marginRight: -2, border: "1px solid var(--bg-secondary)" }} />)}
         </span>
         Legend

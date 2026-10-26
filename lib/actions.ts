@@ -1,16 +1,15 @@
 import { readTable, type Cell } from "./store";
-import { USER_COLUMNS, TASK_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
-import type { User, TaskCompletion, Difficulty } from "../app/lib/types";
+import { USER_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
+import type { User } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
 import type { Team, TeamMember } from "../app/teams/types";
 import { MONTH_RE } from "./roster-dates";
 
-// Tables: "users" and "tasks" (see lib/schema.ts).
+// Tables: see lib/schema.ts.
 
 const str = (v: Cell): string | null => (v == null || v === "" ? null : String(v));
 const bool = (v: Cell): boolean => v === true || String(v).toUpperCase() === "TRUE";
-const num = (v: Cell): number => Number(v) || 0;
 
 function toUser(r: Record<string, Cell>): User {
   return {
@@ -26,19 +25,6 @@ function toUser(r: Record<string, Cell>): User {
     roleId: str(r.roleId),
     avatar: str(r.avatar),
     locationId: str(r.locationId),
-  };
-}
-
-function toTask(r: Record<string, Cell>): TaskCompletion {
-  return {
-    id: String(r.id),
-    userId: String(r.userId),
-    taskTitle: String(r.taskTitle ?? ""),
-    difficulty: String(r.difficulty ?? "easy").toLowerCase() as Difficulty,
-    correctness: num(r.correctness),
-    timeTakenSeconds: num(r.timeTakenSeconds),
-    maxTimeSeconds: num(r.maxTimeSeconds),
-    completedAt: String(r.completedAt ?? ""),
   };
 }
 
@@ -58,12 +44,6 @@ export async function readUsers(): Promise<User[]> {
   return rows.map(toUser);
 }
 
-async function readTasks(): Promise<TaskCompletion[]> {
-  const rows = await readTable("tasks");
-  assertColumns("tasks", rows, TASK_COLUMNS);
-  return rows.map(toTask);
-}
-
 export async function getUsers(): Promise<User[]> {
   try {
     return await readUsers();
@@ -73,36 +53,8 @@ export async function getUsers(): Promise<User[]> {
   }
 }
 
-export async function getTasks(): Promise<TaskCompletion[]> {
-  try {
-    return await readTasks();
-  } catch (error) {
-    console.error("Error fetching tasks:", error);
-    return [];
-  }
-}
-
-export async function getTaskById(id: string): Promise<TaskCompletion | null> {
-  return (await getTasks()).find((t) => t.id === id) ?? null;
-}
-
-export async function getUserById(
-  id: string
-): Promise<(User & { tasks: TaskCompletion[] }) | null> {
-  const [users, tasks] = await Promise.all([getUsers(), getTasks()]);
-  const user = users.find((u) => u.id === id);
-  return user ? { ...user, tasks: tasks.filter((t) => t.userId === id) } : null;
-}
-
-/** Users + tasks for admin screens. Unlike getUsers/getTasks it reports failures, so the UI can say so instead of showing an empty list. */
-export async function loadDirectory(): Promise<{ users: User[]; tasks: TaskCompletion[]; error: boolean }> {
-  try {
-    const [users, tasks] = await Promise.all([readUsers(), readTasks()]);
-    return { users, tasks, error: false };
-  } catch (error) {
-    console.error("Error loading directory:", error);
-    return { users: [], tasks: [], error: true };
-  }
+export async function getUserById(id: string): Promise<User | null> {
+  return (await getUsers()).find((u) => u.id === id) ?? null;
 }
 
 function toRosterEntry(r: Record<string, Cell>): RosterEntry {
@@ -130,7 +82,7 @@ export async function getRoster(month: string): Promise<{ entries: RosterEntry[]
   }
 }
 
-/** Users with a load-failure flag (see loadDirectory). */
+/** Users with a load-failure flag, so the UI can say so instead of showing an empty list. */
 export async function loadUsers(): Promise<{ users: User[]; error: boolean }> {
   try {
     return { users: await readUsers(), error: false };

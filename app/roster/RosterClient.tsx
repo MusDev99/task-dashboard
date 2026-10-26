@@ -1,12 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useOptimistic, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { setCells, clearCells, clearSchedule } from "../../lib/roster-actions";
 import { dateOf, daysInMonth, monthLabel, shiftMonth, MONTH_RE } from "../../lib/roster-dates";
+import { monthDays } from "./days";
 import type { ShiftConfig } from "../../lib/shifts";
 import RosterGrid, { type Selection } from "./RosterGrid";
 import CellPicker from "./CellPicker";
+import DayView from "./DayView";
+import ActionMenu from "../components/ui/ActionMenu";
 import ResourcePicker from "./ResourcePicker";
 import Legend from "./Legend";
 import SummaryCards from "./SummaryCards";
@@ -14,13 +17,26 @@ import ClearScheduleDialog from "./ClearScheduleDialog";
 import UploadCsvDialog from "./UploadCsvDialog";
 import ToastRegion from "../components/ui/Toast";
 import { useToasts } from "../components/ui/useToasts";
-import { ChevronLeft, ChevronRight, AlertIcon } from "../components/ui/Icons";
+import { ChevronLeft, ChevronRight, AlertIcon, CalendarIcon, TableIcon } from "../components/ui/Icons";
 import { download, toCsv } from "./csv";
 import { displayName } from "../lib/ui";
 import type { CellRef, Resource, RosterEntry } from "./types";
 import type { TeamOption } from "../teams/types";
 
 const key = (userId: string, date: string) => `${userId}|${date}`;
+
+type View = "day" | "grid";
+
+// Phones get the one-day list by default, wider screens the month grid. Read with useSyncExternalStore:
+// the server snapshot is null (unknown width), so hydration never mismatches and the choice follows rotation.
+const NARROW = "(max-width: 768px)";
+const subscribeNarrow = (cb: () => void) => {
+  const mq = window.matchMedia(NARROW);
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+};
+const isNarrow = () => window.matchMedia(NARROW).matches;
+const unknownWidth = () => null;
 
 interface Props {
   resources: Resource[];
@@ -58,7 +74,24 @@ export default function RosterClient({ resources, entries, config, month, today,
   });
 
   const codes = useMemo(() => new Map(config.codes.map((c) => [c.code, c])), [config]);
+  const activeCodes = useMemo(() => config.codes.filter((c) => c.active), [config]);
   const days = daysInMonth(month);
+  const dayList = useMemo(() => monthDays(month, today), [month, today]);
+
+  // View (day list / month grid): an explicit choice is kept in the URL, otherwise it follows the screen width.
+  const narrow = useSyncExternalStore(subscribeNarrow, isNarrow, unknownWidth);
+  const [viewPref, setViewPref] = useState<View | null>(() => (params.get("view") === "day" || params.get("view") === "grid" ? (params.get("view") as View) : null));
+  const view: View | null = viewPref ?? (narrow === null ? null : narrow ? "day" : "grid");
+
+  // Selected day for the day view: resets to today (or the 1st) when the month changes.
+  const defaultDay = (m: string) => {
+    const fromUrl = Number(params.get("day"));
+    if (m === month && fromUrl >= 1 && fromUrl <= daysInMonth(m)) return fromUrl;
+    return m === today.slice(0, 7) ? Number(today.slice(8, 10)) : 1;
+  };
+  const [dayFor, setDayFor] = useState(() => ({ month, day: defaultDay(month) }));
+  const day = dayFor.month === month ? Math.min(dayFor.day, days) : month === today.slice(0, 7) ? Number(today.slice(8, 10)) : 1;
+  const setDay = useCallback((d: number) => setDayFor({ month, day: d }), [month]);
 
   // Filters
   const [picked, setPicked] = useState<Set<string>>(() => new Set(resources.map((r) => r.id)));
@@ -76,14 +109,16 @@ export default function RosterClient({ resources, entries, config, month, today,
     [resources, picked, location, teamMembers]
   );
 
-  // Mirror the team filter to the URL (keeps ?month=).
+  // Mirror team / view / day to the URL (keeps ?month=) without a server round-trip.
   useEffect(() => {
     const next = new URLSearchParams(window.location.search);
-    if (team) next.set("team", team);
-    else next.delete("team");
+    const put = (k: string, v: string | null) => (v ? next.set(k, v) : next.delete(k));
+    put("team", team || null);
+    put("view", viewPref);
+    put("day", view === "day" ? String(day) : null);
     const qs = next.toString();
     window.history.replaceState(null, "", qs ? `?${qs}` : window.location.pathname);
-  }, [team]);
+  }, [team, viewPref, view, day]);
 
   // Selection / picker / focus
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -181,8 +216,8 @@ export default function RosterClient({ resources, entries, config, month, today,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, days, month]);
 
-  const onHeaderAssign = useCallback((day: number, el: HTMLElement) => {
-    const date = dateOf(month, day);
+  const onHeaderAssign = useCallback((d: number, el: HTMLElement) => {
+    const date = dateOf(month, d);
     setSel(null);
     setPicker({
       anchor: el.getBoundingClientRect(),
@@ -191,6 +226,19 @@ export default function RosterClient({ resources, entries, config, month, today,
       cells: shown.map((r) => ({ userId: r.id, date })),
     });
   }, [month, shown]);
+
+  const onFocusCell = useCallback((row: number, d: number) => setFocus({ row, day: d }), []);
+  const onSelectResource = useCallback((id: string) => setFocusedUser((f) => (f === id ? null : id)), []);
+
+  // Day view: tap a person to edit that one cell; "set for all" reuses the header-assign flow.
+  const onEditDay = useCallback((userId: string, el: HTMLElement) => {
+    const user = resources.find((r) => r.id === userId);
+    if (!user) return;
+    const date = dateOf(month, day);
+    setSel(null);
+    setPicker({ anchor: el.getBoundingClientRect(), title: displayName(user.name), subtitle: date, cells: [{ userId, date }] });
+  }, [resources, month, day]);
+  const onAssignAllDay = useCallback((el: HTMLElement) => onHeaderAssign(day, el), [onHeaderAssign, day]);
 
   // Mutations (optimistic)
   function apply(cells: CellRef[], code: string | null) {
@@ -211,7 +259,7 @@ export default function RosterClient({ resources, entries, config, month, today,
   };
 
   // Stats (for the focused resource, otherwise everyone shown)
-  const statUsers = focusedUser ? shown.filter((r) => r.id === focusedUser) : shown;
+  const statUsers = useMemo(() => (focusedUser ? shown.filter((r) => r.id === focusedUser) : shown), [shown, focusedUser]);
   const stats = useMemo(() => {
     let hours = 0, leave = 0;
     for (const r of statUsers) {
@@ -270,14 +318,25 @@ export default function RosterClient({ resources, entries, config, month, today,
 
   const scope = focusedUser ? displayName(resources.find((r) => r.id === focusedUser)?.name ?? "") : `${shown.length} shown`;
 
+  const summary = (
+    <div style={{ marginBottom: "1rem" }}>
+      <SummaryCards scope={scope} totalHours={stats.hours} avgPerWeek={stats.avgWeek} leaveDays={stats.leave} />
+      {focusedUser && (
+        <button type="button" className="btn" style={{ minHeight: 32, marginTop: 8, fontSize: "0.75rem" }} onClick={() => setFocusedUser(null)}>
+          Showing {scope} · show all
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="page" style={{ maxWidth: "none" }}>
       <div className="page-header">
         <div>
           <h1 className="page-title">Roster</h1>
-          <p className="page-subtitle">View every resource&apos;s shifts and leave for the month. Click or drag cells to update.</p>
+          <p className="page-subtitle">Shifts and leave for every resource. Tap a person or cell to update.</p>
         </div>
-        <div className="toolbar" style={{ margin: 0 }}>
+        <div className="toolbar roster-nav" style={{ margin: 0 }}>
           <div className="view-toggle" style={{ display: "inline-flex" }} role="group" aria-label="Month">
             <button type="button" aria-label="Previous month" onClick={() => goMonth(shiftMonth(month, -1))}><ChevronLeft size={16} /></button>
             <button type="button" aria-label="Next month" onClick={() => goMonth(shiftMonth(month, 1))}><ChevronRight size={16} /></button>
@@ -310,24 +369,33 @@ export default function RosterClient({ resources, entries, config, month, today,
         </span>
       </div>
       <div className="toolbar">
-        <Legend codes={config.codes.filter((c) => c.active)} />
-        <button type="button" className="btn" onClick={() => setDialog("clear")}>Clear schedule</button>
-        <button type="button" className="btn" onClick={exportCsv} disabled={shown.length === 0}>Export</button>
-        <button type="button" className="btn" onClick={() => setDialog("upload")}>Upload CSV</button>
+        <div className="view-switch" role="group" aria-label="Roster view">
+          <button type="button" aria-pressed={view === "day"} onClick={() => setViewPref("day")}><CalendarIcon size={16} /> Day</button>
+          <button type="button" aria-pressed={view === "grid"} onClick={() => setViewPref("grid")}><TableIcon size={16} /> Month</button>
+        </div>
+        <Legend codes={activeCodes} />
+        <div className="roster-actions-inline">
+          <button type="button" className="btn" onClick={() => setDialog("clear")}>Clear schedule</button>
+          <button type="button" className="btn" onClick={exportCsv} disabled={shown.length === 0}>Export</button>
+          <button type="button" className="btn" onClick={() => setDialog("upload")}>Upload CSV</button>
+        </div>
+        <div className="roster-actions-menu">
+          <ActionMenu
+            label="More roster actions"
+            items={[
+              { label: "Export CSV", onSelect: exportCsv, disabled: shown.length === 0 },
+              { label: "Upload CSV", onSelect: () => setDialog("upload") },
+              { label: "Clear schedule", onSelect: () => setDialog("clear"), danger: true, separatorBefore: true },
+            ]}
+          />
+        </div>
       </div>
 
-      <div style={{ marginBottom: "1rem" }}>
-        <SummaryCards scope={scope} totalHours={stats.hours} avgPerWeek={stats.avgWeek} leaveDays={stats.leave} />
-        {focusedUser && (
-          <button type="button" className="btn" style={{ minHeight: 32, marginTop: 8, fontSize: "0.75rem" }} onClick={() => setFocusedUser(null)}>
-            Showing {scope} · show all
-          </button>
-        )}
-      </div>
+      {view !== "day" && summary}
 
-      <p className="page-subtitle" style={{ fontSize: "0.8rem", marginBottom: "0.75rem" }}>
+      {view === "grid" && <p className="page-subtitle roster-tip">
         <b>Tip:</b> click a name to load their stats · click or drag cells on one row to assign a range · use <b>+</b> above a date to assign it for everyone shown · arrow keys + Enter work too.
-      </p>
+      </p>}
 
       <div ref={gridWrap}>
         {shown.length === 0 ? (
@@ -335,18 +403,24 @@ export default function RosterClient({ resources, entries, config, month, today,
             <h3>{resources.length === 0 ? "No active resources" : "No resources match"}</h3>
             <p>{resources.length === 0 ? "Add or activate users on the Users page." : "Adjust the resource, location or team filter."}</p>
           </div></div>
+        ) : view === null ? (
+          <div className="shimmer skeleton" style={{ height: 380, borderRadius: 16 }} aria-busy="true" aria-label="Loading roster" />
+        ) : view === "day" ? (
+          <>
+            <DayView resources={shown} days={dayList} day={day} codes={codes} values={values} onDay={setDay} onEdit={onEditDay} onAssignAll={onAssignAllDay} />
+            <div style={{ marginTop: "1rem" }}>{summary}</div>
+          </>
         ) : (
           <RosterGrid
-            resources={shown} month={month} days={days} today={today} codes={codes} values={values}
+            resources={shown} month={month} today={today} codes={codes} values={values}
             selection={selection} focus={focus} focusedUser={focusedUser}
             onPointerDown={onPointerDown} onPointerEnter={onPointerEnter} onKeyDown={onKeyDown}
-            onFocusCell={(row, day) => setFocus({ row, day })} onHeaderAssign={onHeaderAssign}
-            onSelectResource={(id) => setFocusedUser((f) => (f === id ? null : id))}
+            onFocusCell={onFocusCell} onHeaderAssign={onHeaderAssign} onSelectResource={onSelectResource}
           />
         )}
       </div>
 
-      {picker && <CellPicker anchor={picker.anchor} title={picker.title} subtitle={picker.subtitle} codes={config.codes.filter((c) => c.active)} onPick={pick} onClose={closePicker} />}
+      {picker && <CellPicker anchor={picker.anchor} title={picker.title} subtitle={picker.subtitle} codes={activeCodes} onPick={pick} onClose={closePicker} />}
       {dialog === "clear" && <ClearScheduleDialog resources={resources} monthLabel={monthLabel(month)} countFor={countFor} pending={clearing} onConfirm={confirmClear} onCancel={() => setDialog(null)} />}
       {dialog === "upload" && <UploadCsvDialog onCancel={() => setDialog(null)} onDone={(m) => { setDialog(null); notify("success", m); router.refresh(); }} />}
       <ToastRegion toasts={toasts} />

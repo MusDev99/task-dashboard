@@ -16,7 +16,7 @@ import {
 export type SettingsResult = { ok: true; message: string } | { ok: false; errors?: SettingErrors; message?: string };
 
 function refresh() {
-  for (const p of ["/settings", "/roster", "/tasks", "/users", "/", "/leaderboard"]) revalidatePath(p);
+  for (const p of ["/settings", "/roster", "/tasks", "/users", "/"]) revalidatePath(p);
 }
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);

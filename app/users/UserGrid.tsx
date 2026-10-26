@@ -31,9 +31,8 @@ export default function UserGrid({ users, mobileOnly, onEdit, onDelete }: Props)
             </div>
           </Link>
           <div className="user-card-stats">
-            <div><b style={{ color: "var(--accent-amber)" }}>{u.meritScore}</b><span>Score</span></div>
-            <div><b>{u.tasksCompleted}</b><span>Tasks</span></div>
-            <div><b style={{ color: "var(--accent-emerald)" }}>{u.avgCorrectness}%</b><span>Accuracy</span></div>
+            <div><b>{u.roleName ?? "—"}</b><span>Role</span></div>
+            <div><b>{u.employeeId ?? "—"}</b><span>Employee ID</span></div>
           </div>
         </div>
       ))}

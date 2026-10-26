@@ -1,260 +1,69 @@
 import Link from "next/link";
-import Image from "next/image";
-import { getUserById, getUsers, getTasks } from "../../../lib/actions";
+import { getUserById } from "../../../lib/actions";
 import { getLocations, getRoles } from "../../../lib/settings";
-import { calculateMeritScore, calculateAvgCorrectness, calculateTaskScore } from "../../lib/merit";
+import Avatar from "../../components/ui/Avatar";
+import { displayName } from "../../lib/ui";
 
 // Data is read fresh on every request.
 export const dynamic = "force-dynamic";
 
-const avatarColors = [
-  "linear-gradient(135deg, #6c63ff, #9b5de5)",
-  "linear-gradient(135deg, #f15bb5, #fe6d73)",
-  "linear-gradient(135deg, #00c9a7, #00b4d8)",
-  "linear-gradient(135deg, #ffc233, #ff9f1c)",
-  "linear-gradient(135deg, #9b5de5, #f15bb5)",
-  "linear-gradient(135deg, #00b4d8, #0077b6)",
-  "linear-gradient(135deg, #ff6b6b, #ee5a24)",
-  "linear-gradient(135deg, #26de81, #20bf6b)",
-  "linear-gradient(135deg, #fd79a8, #e84393)",
-  "linear-gradient(135deg, #a29bfe, #6c5ce7)",
-];
-
-async function getRank(userId: string): Promise<number> {
-  const [users, tasks] = await Promise.all([getUsers(), getTasks()]);
-  const sorted = users
-    .map((u) => ({
-      id: u.id,
-      score: calculateMeritScore(tasks.filter((t) => t.userId === u.id)),
-    }))
-    .sort((a, b) => b.score - a.score);
-  return sorted.findIndex((u) => u.id === userId) + 1;
-}
-
 interface Props {
-  params: Promise<{
-    userId: string;
-  }>;
+  params: Promise<{ userId: string }>;
 }
+
+const fmtDate = (s: string) => {
+  const d = new Date(s.replace(" ", "T") + (s.includes("Z") ? "" : "Z"));
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+};
 
 export default async function UserProfilePage({ params }: Props) {
   const { userId } = await params;
-
   const [user, locations, roles] = await Promise.all([getUserById(userId), getLocations(), getRoles()]);
-  const users = await getUsers();
-  const userIndex = users.findIndex((u) => u.id === userId);
 
   if (!user) {
     return (
-      <div style={{ textAlign: "center", padding: "4rem 1rem" }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>User not found</h1>
-        <Link href="/users" style={{ color: "var(--accent-indigo)", textDecoration: "none", fontSize: "0.9rem" }}>
-          ← Back to Users
-        </Link>
+      <div className="page empty-state">
+        <h1 className="page-title">User not found</h1>
+        <Link href="/users" className="btn">← Back to Users</Link>
       </div>
     );
   }
 
   const location = locations.find((l) => l.id === user.locationId);
   const role = roles.find((r) => r.id === user.roleId);
-  const userTasks = user.tasks || [];
-  const meritScore = calculateMeritScore(userTasks);
-  const avgCorrectness = calculateAvgCorrectness(userTasks);
-  const rank = await getRank(userId);
+  const details: [string, string][] = [
+    ["Email", user.email],
+    ["Phone", user.phoneNumber ?? "—"],
+    ["Employee ID", user.employeeId ?? "—"],
+    ["Location", location?.name ?? "—"],
+    ["Role", role?.name ?? "—"],
+    ["Joined", fmtDate(user.joinedDate)],
+  ];
 
   return (
-    <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-      {/* Back link */}
-      <Link
-        href="/users"
-        style={{
-          color: "var(--text-muted)",
-          textDecoration: "none",
-          fontSize: "0.85rem",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          marginBottom: "1.5rem",
-        }}
-      >
-        ← Back to Users
-      </Link>
+    <div className="page" style={{ maxWidth: 900 }}>
+      <Link href="/users" className="back-link">← Back to Users</Link>
 
-      {/* Profile Header */}
-      <div
-        className="glass-card profile-header"
-        style={{
-          padding: "2rem",
-          marginBottom: "1.5rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "1.5rem",
-          flexWrap: "wrap",
-        }}
-      >
-        <div
-          className="avatar avatar-xl"
-          style={{
-            background: user.avatar ? 'none' : avatarColors[userIndex % avatarColors.length],
-            boxShadow: "0 0 30px rgba(108, 99, 255, 0.2)",
-            overflow: 'hidden'
-          }}
-        >
-          {user.avatar ? (
-            <Image 
-              src={user.avatar} 
-              alt={user.name} 
-              width={64}
-              height={64}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            user.name.charAt(0)
-          )}
+      <div className="table-card profile-header">
+        <Avatar id={user.id} name={user.name} src={user.avatar} size="lg" />
+        <div style={{ minWidth: 0 }}>
+          <h1 className="page-title" style={{ marginBottom: 6 }}>{displayName(user.name)}</h1>
+          <span className={`status ${user.isActive ? "status-active" : "status-inactive"}`}>{user.isActive ? "Active" : "Inactive"}</span>
         </div>
-        <div style={{ flex: 1, minWidth: "200px" }}>
-          <div className="profile-badges" style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em", margin: 0 }}>
-              {user.name.replace(/\s-\s*$/, "")}
-            </h1>
-            {location && (
-              <span className="badge badge-indigo" title={location.address || undefined}>
-                {location.name}
-              </span>
-            )}
-            {user.employeeId && (
-              <span className="badge badge-pink">
-                ID: {user.employeeId}
-              </span>
-            )}
-          </div>
-          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginBottom: "0.75rem", wordBreak: "break-word" }}>
-            {user.email} · Registered {new Date(user.joinedDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-            <div style={{ fontSize: "0.75rem", padding: "4px 8px", background: "rgba(255,255,255,0.05)", borderRadius: "4px", color: "var(--text-secondary)" }}>
-              Role: {role?.name ?? "No role"}
-            </div>
-          </div>
+        <div className="profile-actions">
+          <Link href="/roster" className="btn">Roster</Link>
+          <Link href={`/tasks?assignee=${encodeURIComponent(user.id)}&view=list`} className="btn">Tasks</Link>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div
-        className="stats-grid"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-          gap: "1rem",
-          marginBottom: "1.5rem",
-        }}
-      >
-        <div className="stat-card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
-            Rank
+      <dl className="table-card profile-details">
+        {details.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>{v}</dd>
           </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800 }}>
-            #{rank}
-          </div>
-        </div>
-        <div className="stat-card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
-            Merit Score
-          </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--accent-amber)" }}>
-            {meritScore}
-          </div>
-        </div>
-        <div className="stat-card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
-            Tasks Completed
-          </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800 }}>
-            {userTasks.length}
-          </div>
-        </div>
-        <div className="stat-card" style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>
-            Avg Accuracy
-          </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--accent-emerald)" }}>
-            {avgCorrectness}%
-          </div>
-        </div>
-      </div>
-
-      {/* Task History */}
-      <div className="glass-card" style={{ padding: "0", overflow: "hidden" }}>
-        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid var(--border-subtle)" }}>
-          <h2 style={{ fontSize: "1.05rem", fontWeight: 600, margin: 0 }}>📋 Task History</h2>
-        </div>
-        {userTasks.length === 0 ? (
-          <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)" }}>
-            No tasks completed yet
-          </div>
-        ) : (
-          userTasks.map((task, i) => (
-            <div key={task.id}>
-              <div
-                className="task-history-row animate-fade-in-up"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 80px 80px 80px",
-                  gap: "1rem",
-                  padding: "1rem 1.5rem",
-                  alignItems: "center",
-                  borderBottom: "1px solid var(--border-subtle)",
-                                    animationDelay: `${i * 60}ms`,
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.875rem", fontWeight: 600 }}>{task.taskTitle}</div>
-                  <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                    {new Date(task.completedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </div>
-                </div>
-                <div className="task-history-meta" style={{ display: "contents" }}>
-                  <div style={{ textAlign: "center" }}>
-                    <span className={`badge badge-${task.difficulty}`}>{task.difficulty}</span>
-                  </div>
-                  <div style={{ textAlign: "center", fontSize: "0.85rem", fontWeight: 600 }}>
-                    {task.correctness}%
-                  </div>
-                  <div
-                    style={{
-                      textAlign: "center",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
-                      color: "var(--accent-amber)",
-                    }}
-                  >
-                    
-                    +{Math.round(calculateTaskScore(task))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* Activity Timeline Placeholder */}
-      <div
-        className="glass-card"
-        style={{
-          padding: "2rem",
-          marginTop: "1.5rem",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>📊</div>
-        <div style={{ fontSize: "0.95rem", fontWeight: 600, marginBottom: "0.5rem" }}>
-          Activity Timeline
-        </div>
-        <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
-          Coming soon — detailed activity charts and learning progress tracking will appear here.
-        </div>
-      </div>
+        ))}
+      </dl>
     </div>
   );
 }

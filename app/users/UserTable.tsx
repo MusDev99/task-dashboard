@@ -7,15 +7,14 @@ import { SortIcon } from "../components/ui/Icons";
 import { displayName } from "../lib/ui";
 import type { UserRow } from "./types";
 
-export type SortKey = "name" | "location" | "tasks" | "score" | "joined";
+export type SortKey = "name" | "location" | "role" | "joined";
 export interface Sort { key: SortKey; dir: "asc" | "desc" }
 
 const COLUMNS: { key: SortKey | null; label: string; num?: boolean }[] = [
   { key: "name", label: "User" },
   { key: "location", label: "Location" },
+  { key: "role", label: "Role" },
   { key: null, label: "Status" },
-  { key: "tasks", label: "Tasks", num: true },
-  { key: "score", label: "Score", num: true },
   { key: "joined", label: "Joined" },
 ];
 
@@ -63,9 +62,8 @@ export default function UserTable({ users, sort, onSort, onEdit, onDelete }: Pro
                 </div>
               </td>
               <td>{u.locationName ? <span className="badge badge-indigo">{u.locationName}</span> : <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
+              <td>{u.roleName ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
               <td><span className={`status ${u.isActive ? "status-active" : "status-inactive"}`}>{u.isActive ? "Active" : "Inactive"}</span></td>
-              <td className="num">{u.tasksCompleted}</td>
-              <td className="num" style={{ color: "var(--accent-amber)", fontWeight: 600 }}>{u.meritScore}</td>
               <td style={{ color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{fmtDate(u.joinedDate)}</td>
               <td><RowMenu user={u} onEdit={() => onEdit(u)} onDelete={() => onDelete(u)} /></td>
             </tr>

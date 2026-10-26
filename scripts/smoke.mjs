@@ -8,7 +8,7 @@ const req = (path, init = {}) => fetch(base + path, { redirect: 'manual', ...ini
 
 const gated = (r) => (r.status >= 300 && r.status < 400 && (r.headers.get('location') ?? '').includes('/login')) || r.status === 503;
 
-for (const path of ['/', '/users', '/roster', '/tasks', '/settings', '/leaderboard']) {
+for (const path of ['/', '/users', '/roster', '/tasks', '/settings', '/teams']) {
   const r = await req(path);
   check(`GET ${path} without session is gated`, gated(r), `HTTP ${r.status}`);
 }

@@ -3,9 +3,6 @@ import type { User } from "../lib/types";
 export interface UserRow extends User {
   locationName: string | null;
   roleName: string | null;
-  meritScore: number;
-  tasksCompleted: number;
-  avgCorrectness: number;
 }
 
 export interface Option {
