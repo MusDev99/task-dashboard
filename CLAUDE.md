@@ -26,6 +26,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - **Locations & roles**: users reference `locationId` / `roleId` (managed lists, replacing the old free-text station code / role id). Show names via `getLocations()` / `getRoles()`; never display raw ids. New code must not reintroduce `stationCode`.
 - **Links** are http(s) only (`safeUrl` in `lib/links.ts`), rendered with `target="_blank" rel="noopener noreferrer"`; Jira/GitLab/GitHub detection is in `describeLink`.
 - **Availability warns, never blocks**: `lib/capacity.ts` (pure) + `getAssigneeAvailability` compute working/leave/unscheduled days over the task window from the roster, plus open story points; the picker shows it and warns, but any active person can be assigned.
+- **Smart assign (AI pilot)**: `suggestAssignees` (`lib/smart-assign-actions.ts`) is read-only and only **suggests** (the person presses *Assign*; never auto-assign). Pure scoring/prompt/response parsing in `lib/smart-assign.ts` (unit-tested); the Claude API is called only from `lib/claude.ts` (`server-only`, key in `ANTHROPIC_API_KEY`, model `SMART_ASSIGN_MODEL`, default `claude-opus-5-5`). Candidates are pseudonymised (`P1…`) before they're sent; the model can only pick from the shortlist and scores stay the rules' scores. Any AI failure (no key, timeout, refusal, bad JSON, throttle) falls back to the rules with a note.
 - Order multi-step writes so a failure never leaves dangling references (delete a user's `tasks` before the `users` row).
 - After a mutation, `revalidatePath` every page that shows the data (`/users`, `/`, `/roster`, `/tasks`, `/teams`, `/settings`).
 - **PWA**: manifest in `app/manifest.ts`, service worker `public/sw.js`. The SW may cache only content-hashed build assets (`/_next/static/*`) and `/icons/*` — **never pages, server-action responses or any data** (shared devices, private staff data); offline navigations get `public/offline.html`. Public static PWA files must stay excluded in the `proxy.ts` matcher. Bump `VERSION` in `sw.js` to evict old caches.
@@ -94,7 +95,7 @@ Run the `appsec-review` skill (`.claude/skills/appsec-review/`; automated part: 
 | A07 Auth | Constant-time signature compare, throttled OAuth start/callback, redirect only via `safeNext()`. Only the banner on `/login` (signed flash cookie, 5 min) reveals *why* sign-in was refused |
 | A08 Integrity | Commit the lockfile; no new third-party script/CDN without adding it to the CSP deliberately |
 | A09 Logging | Log failures server-side; never log passwords, tokens or keys |
-| A10 SSRF | Server code fetches fixed Google hosts only (`googleEndpoints` in `lib/oidc.ts`); never a URL taken from the client |
+| A10 SSRF | Server code fetches fixed hosts only: Google (`googleEndpoints` in `lib/oidc.ts`) and the Claude API via the SDK in `lib/claude.ts`; never a URL taken from the client |
 
 ## Mobile-first & Laws of UX
 Design for **375px first**, then scale up (thumb-reachable primary action, drawers full-width, tables collapse to cards below 768px, no horizontal scroll). Apply the Laws of UX listed under *UI / UX standard* to every new or changed screen and name the law in the PR/feature.md.
