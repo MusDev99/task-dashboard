@@ -2,12 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { appendRow, deleteRowsByIds, ensureTab, updateRowById } from "./store";
-import { getRoster, getUsers, loadWorkTasks } from "./actions";
-import { getShiftConfig } from "./shifts";
+import { getUsers, loadWorkTasks } from "./actions";
+import { loadAssigneeData } from "./assignee-data";
 import { getTaskConfig } from "./task-config";
 import { WORK_TASK_COLUMNS } from "./schema";
 import { cleanTaskInput, validateTask, type TaskErrors } from "./task-validation";
-import { availability, monthsBetween, taskWindow, workload } from "./capacity";
 import type { Availability, TaskInput, WorkTask } from "../app/tasks/types";
 import type { Cell } from "./store";
 import { requireSession } from "./auth";
@@ -116,9 +115,5 @@ export async function deleteTask(id: string): Promise<TaskResult<{ subtasksDelet
 /** Read-only: availability + workload of every active user for a task window (dates optional). */
 export async function getAssigneeAvailability(start: string | null, due: string | null, excludeTaskId?: string): Promise<Availability[]> {
   await requireSession();
-  const [users, shifts, config, loaded] = await Promise.all([getUsers(), getShiftConfig(), getTaskConfig(), loadWorkTasks()]);
-  const window = taskWindow(start, due);
-  const roster = window ? (await Promise.all(monthsBetween(window[0], window[1]).map((m) => getRoster(m)))).flatMap((r) => r.entries) : [];
-  const active = users.filter((u) => u.isActive).map((u) => u.id);
-  return availability(active, window, roster, shifts, workload(loaded.tasks, config, excludeTaskId));
+  return (await loadAssigneeData(start, due, excludeTaskId)).list;
 }

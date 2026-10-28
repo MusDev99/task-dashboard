@@ -9,6 +9,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { CloseIcon, PlusIcon, TrashIcon, AlertIcon } from "../components/ui/Icons";
 import { useFocusTrap } from "../components/ui/useFocusTrap";
 import AssigneePicker from "./AssigneePicker";
+import SmartAssign from "./SmartAssign";
 import LabelsInput from "./LabelsInput";
 import LinksEditor from "./LinksEditor";
 import { AssigneeChip, PointsChip, StatusPill } from "./TaskBits";
@@ -191,6 +192,8 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
                 <span className="field-hint">{hasWindow ? "Availability comes from the roster for the task's dates." : "Add a start or due date to see roster availability."}</span>
               )}
             </div>
+
+            <SmartAssign form={form} taskId={task?.id ?? null} people={people} teams={teams} value={form.assigneeId} onPick={(id) => set("assigneeId", id)} />
 
             <div className="field">
               <label htmlFor="f-labels">Labels</label>
