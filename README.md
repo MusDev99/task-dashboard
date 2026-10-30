@@ -90,7 +90,7 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ### AI-driven development workflow
 
-`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
+`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. The shared review checklist used in every MusDev99 repo is `.agents/skills/code-review/SKILL.md`; `code-review-checklist` adds this repo's rules and the report file. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
 
 ## Project structure
 
@@ -121,6 +121,8 @@ Run the project's security-review skill before releases and after adding a serve
 To ship a service-worker change that must evict old caches, bump `VERSION` in `public/sw.js`.
 
 ## Changelog
+
+- **Unreleased · Shared code-review skill**: `.agents/skills/code-review/SKILL.md`, the same 7-area review checklist (intent, readability, tests, security, performance, style, docs) used in every repo, findings by severity.
 
 - **Unreleased · Smart assign (AI pilot)**: *Smart assign* panel in the task drawer suggests up to 3 assignees with reasons. Rules score availability (50) + workload (30) + past-task experience (20); with `ANTHROPIC_API_KEY` set, Claude re-ranks and explains the top 8 (pseudonymised: no names, emails or ids leave the server). Falls back to the rules on no key, timeout, refusal or rate limit. Never auto-assigns. Spec: `docs/features/smart-assign/feature.md`.
 
