@@ -97,7 +97,7 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
   }
 }
 
-/** Hard delete: removes the user's tasks first, then the user, so no task is ever orphaned. */
+/** Hard delete: cleans up everything that points at the user first, then removes the user. */
 export async function deleteUser(id: string): Promise<ActionResult<null>> {
   await requireSession();
   try {
@@ -110,8 +110,6 @@ export async function deleteUser(id: string): Promise<ActionResult<null>> {
     await unassignWorkTasks(id);
     // Team memberships go; teams they led keep going without a lead.
     await removeFromTeams(id);
-    // Legacy quiz completions (the `tasks` table) are no longer shown, but are still cleaned up.
-    await deleteRowsWhere("tasks", "userId", id);
     const usersDeleted = await deleteRowsWhere("users", "id", id);
     if (usersDeleted === 0) return { ok: false, message: "This user no longer exists." };
     refresh();

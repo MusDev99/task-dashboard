@@ -4,11 +4,6 @@ export const USER_COLUMNS = [
   "updatedAt", "phoneNumber", "roleId", "avatar", "locationId",
 ] as const;
 
-export const TASK_COLUMNS = [
-  "id", "userId", "taskTitle", "difficulty", "correctness",
-  "timeTakenSeconds", "maxTimeSeconds", "completedAt",
-] as const;
-
 // One row per user per day. id = `${userId}_${date}` (date = YYYY-MM-DD), so upserts can't duplicate.
 export const ROSTER_COLUMNS = ["id", "userId", "date", "type", "code", "updatedAt"] as const;
 

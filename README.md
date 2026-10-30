@@ -19,7 +19,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 
 1. Provision the data store and a service identity with read/write access to it; download its credentials JSON into `keys/` (git-ignored).
 2. Copy `.env.example` to `.env` and set `DATA_STORE_ID` and `DATA_STORE_KEY_PATH` (path to the credentials JSON). On hosts without a file system (e.g. Netlify) set `DATA_STORE_CLIENT_EMAIL` + `DATA_STORE_PRIVATE_KEY` instead and leave `DATA_STORE_KEY_PATH` unset.
-3. Seed sample data (creates/overwrites the `users` and `tasks` tables): `npm run seed:data`
+3. Seed sample data (creates/overwrites the `users` table): `npm run seed:data`
 4. Create the settings tables: `npm run migrate:settings` (see below).
 
 ### Tables
@@ -27,7 +27,6 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | Table | Purpose | Created |
 |---|---|---|
 | `users` | People (id, email, name, employeeId, locationId, roleId, …) | `seed:data` |
-| `tasks` | Legacy quiz completions (no longer shown; rows are still removed when a user is deleted) | `seed:data` |
 | `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
 | `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
@@ -122,6 +121,7 @@ To ship a service-worker change that must evict old caches, bump `VERSION` in `p
 
 ## Changelog
 
+- **Unreleased · Legacy quiz data removed**: the last leaderboard leftovers are gone: `json/tasks.json`, the `tasks` table schema, seeding it in `npm run seed:data` (now seeds `users` only) and the cleanup step when a user is deleted. An old `tasks` tab in the data store is no longer used and can be deleted by hand.
 - **Unreleased · Smart assign (AI pilot)**: *Smart assign* panel in the task drawer suggests up to 3 assignees with reasons. Rules score availability (50) + workload (30) + past-task experience (20); with `ANTHROPIC_API_KEY` set, Claude re-ranks and explains the top 8 (pseudonymised: no names, emails or ids leave the server). Falls back to the rules on no key, timeout, refusal or rate limit. Never auto-assigns. Spec: `docs/features/smart-assign/feature.md`.
 
 - **v0.4.0 · Mobile-first for every module**: drawers and dialogs now sit above the phone top bar/tab bar (the Save button was hidden before); Tasks — list rows become cards, Kanban lanes swipe one per screen, Calendar becomes an agenda (with *Show earlier days*), filters fold into a *Filters · n* toggle; Users/Teams/Tasks primary action is a floating button above the tab bar; stat cards become a swipeable strip; confirm dialogs are bottom sheets; drawers are full-screen with safe-area footers; 16px inputs (no iOS zoom); shared `StatCard` replaces two duplicate card components.

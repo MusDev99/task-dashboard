@@ -1,16 +1,16 @@
 # WorkForce Management — project rules for Claude
 
-Resource-management system for small/medium teams: plan capacity from the **roster**, then assign **tasks** by availability. The legacy Leaderboard/merit score was removed; the `tasks` table (old quiz completions) is no longer read by the UI — only seeded and cleaned up when a user is deleted. Installable PWA, mobile-first. Next.js 16 (App Router), React 19, Tailwind 4, TypeScript. Data lives in a managed data store (one table per entity).
+Resource-management system for small/medium teams: plan capacity from the **roster**, then assign **tasks** by availability. The legacy Leaderboard/merit score and its quiz-completion `tasks` table were removed from the code (an old `tasks` tab in the data store is unused and can be deleted by hand). Installable PWA, mobile-first. Next.js 16 (App Router), React 19, Tailwind 4, TypeScript. Data lives in a managed data store (one table per entity).
 
 ## Commands
 - `npm run dev` / `npm run build` — dev server / production build
-- `npm run seed:data` — seeds the `users` and `tasks` tables from `json/` (**overwrites them**; also resets any CRUD changes; does not touch `roster` or settings tables)
+- `npm run seed:data` — seeds the `users` table from `json/` (**overwrites it**; also resets any CRUD changes; does not touch `roster` or settings tables)
 - `npm run migrate:settings` — idempotent: seeds settings tables from `json/` if missing, backs up `users`, converts `stationCode` → `locationId`, creates roles from role ids in use
 - `npx tsc --noEmit` — typecheck (ESLint config is currently broken; don't rely on `next lint`)
 - `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + data store (needs a build and Playwright)
 
 ## Data rules
-- Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + `teams`, `team_members` + legacy `tasks` = quiz completions. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
+- Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + `teams`, `team_members`. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
 - All data access goes through `lib/store.ts` (`readTable`, `appendRow`, `updateRowById`, `upsertRowsById`, `deleteRowsWhere`, `deleteRowsByIds`, `ensureTab`, `writeTable`). Never call the data-store API elsewhere. Prefer the batch helpers for multi-row edits (few API calls, not N).
 - Reads: `lib/actions.ts` (typed `User`; `loadUsers()` / `loadWorkTasks()` / `loadTeams()` report load failures). Writes: server actions in `lib/*-actions.ts` (`"use server"`).
 - **Validate on the server** (`lib/validation.ts`) — client validation is only for UX. Trim input, check uniqueness, never trust the client.
@@ -27,7 +27,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - **Links** are http(s) only (`safeUrl` in `lib/links.ts`), rendered with `target="_blank" rel="noopener noreferrer"`; Jira/GitLab/GitHub detection is in `describeLink`.
 - **Availability warns, never blocks**: `lib/capacity.ts` (pure) + `getAssigneeAvailability` compute working/leave/unscheduled days over the task window from the roster, plus open story points; the picker shows it and warns, but any active person can be assigned.
 - **Smart assign (AI pilot)**: `suggestAssignees` (`lib/smart-assign-actions.ts`) is read-only and only **suggests** (the person presses *Assign*; never auto-assign). Pure scoring/prompt/response parsing in `lib/smart-assign.ts` (unit-tested); the Claude API is called only from `lib/claude.ts` (`server-only`, key in `ANTHROPIC_API_KEY`, model `SMART_ASSIGN_MODEL`, default `claude-opus-5-5`). Candidates are pseudonymised (`P1…`) before they're sent; the model can only pick from the shortlist and scores stay the rules' scores. Any AI failure (no key, timeout, refusal, bad JSON, throttle) falls back to the rules with a note.
-- Order multi-step writes so a failure never leaves dangling references (delete a user's `tasks` before the `users` row).
+- Order multi-step writes so a failure never leaves dangling references (delete a user's roster rows and memberships before the `users` row).
 - After a mutation, `revalidatePath` every page that shows the data (`/users`, `/`, `/roster`, `/tasks`, `/teams`, `/settings`).
 - **PWA**: manifest in `app/manifest.ts`, service worker `public/sw.js`. The SW may cache only content-hashed build assets (`/_next/static/*`) and `/icons/*` — **never pages, server-action responses or any data** (shared devices, private staff data); offline navigations get `public/offline.html`. Public static PWA files must stay excluded in the `proxy.ts` matcher. Bump `VERSION` in `sw.js` to evict old caches.
 - **Roster views**: Day (`DayView.tsx`, default on phones) and Month (`RosterGrid.tsx`, default on desktop), chosen via `useSyncExternalStore` + `matchMedia` (server snapshot `null` → skeleton, never a hydration mismatch); `?view=` / `?day=` mirror the choice. Grid rows are memoised `RosterRow`s keyed on a joined code string — keep callbacks passed to the grid stable (`useCallback`) or every row re-renders. Day labels come from `app/roster/days.ts` (`monthDays`).
@@ -121,6 +121,6 @@ Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agen
 ## Definition of done
 1. `npm run verify` passes (typecheck, tests, build).
 2. Exercised in the browser at desktop and 375px, including empty / error / keyboard-only paths.
-3. Stored data verified after create / edit / delete (remove only the test rows you added; don't re-run `seed:data` casually — it overwrites `users`/`tasks`).
+3. Stored data verified after create / edit / delete (remove only the test rows you added; don't re-run `seed:data` casually — it overwrites `users`).
 4. No new hardcoded data, `any`, `@ts-ignore`, or secrets in the diff.
 5. `README.md` (and `CLAUDE.md` if rules changed) updated for the change.
