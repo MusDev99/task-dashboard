@@ -121,6 +121,7 @@ To ship a service-worker change that must evict old caches, bump `VERSION` in `p
 
 ## Changelog
 
+- **Unreleased · Mobile menu polish**: the phone drawer has a compact header (no "Menu" label, one-line tagline), only the links scroll (thin scrollbar), and your account + **Sign out** stay pinned at the bottom; on short/landscape screens the header and spacing shrink so everything fits.
 - **Unreleased · Legacy quiz data removed**: the last leaderboard leftovers are gone: `json/tasks.json`, the `tasks` table schema, seeding it in `npm run seed:data` (now seeds `users` only) and the cleanup step when a user is deleted. An old `tasks` tab in the data store is no longer used and can be deleted by hand.
 - **Unreleased · Smart assign (AI pilot)**: *Smart assign* panel in the task drawer suggests up to 3 assignees with reasons. Rules score availability (50) + workload (30) + past-task experience (20); with `ANTHROPIC_API_KEY` set, Claude re-ranks and explains the top 8 (pseudonymised: no names, emails or ids leave the server). Falls back to the rules on no key, timeout, refusal or rate limit. Never auto-assigns. Spec: `docs/features/smart-assign/feature.md`.
 
