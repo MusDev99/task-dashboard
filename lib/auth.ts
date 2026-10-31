@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, readAuthConfig, verifySessionToken, type SessionUser } from "./auth-core";
 import { readUsers } from "./actions";
+import { FORBIDDEN_MESSAGE, can, type AccessLevel, type Capability } from "./access";
 
 /** True when auth is switched off on purpose (local dev without Google set up, or AUTH_DISABLED=true). */
 export function authBypassed(): boolean {
@@ -27,6 +28,37 @@ export async function isAuthed(): Promise<boolean> {
  */
 export async function requireSession(): Promise<void> {
   if (!(await isAuthed())) throw new Error("Unauthorized");
+}
+
+export interface Actor {
+  uid: string;
+  level: AccessLevel;
+}
+
+/**
+ * The signed-in person and their access level, read from the users tab on every call (not from the cookie),
+ * so a demotion or deactivation applies to their next action. Fails closed: no session, an unknown or inactive
+ * user, or a data-store outage all throw. With auth bypassed (local dev / AUTH_DISABLED) the caller is an admin.
+ */
+export async function requireActor(): Promise<Actor> {
+  if (authBypassed()) return { uid: "", level: "admin" };
+  const who = await currentUser();
+  if (!who) throw new Error("Unauthorized");
+  const me = (await readUsers()).find((u) => u.id === who.uid);
+  if (!me || !me.isActive) throw new Error("Unauthorized");
+  return { uid: me.id, level: me.access };
+}
+
+/** Logs a refused action (who + what, never the payload) and returns the generic result for the client. */
+export function forbidden(action: string, actor: Actor): { ok: false; message: string } {
+  console.warn(`access denied: ${action} (uid=${actor.uid || "-"}, level=${actor.level})`);
+  return { ok: false, message: FORBIDDEN_MESSAGE };
+}
+
+/** First line of a write action: the actor, plus a ready-to-return refusal when their level lacks `capability`. */
+export async function actorWith(capability: Capability, action: string): Promise<{ actor: Actor; denied: { ok: false; message: string } | null }> {
+  const actor = await requireActor();
+  return can(actor.level, capability) ? { actor, denied: null } : { actor, denied: forbidden(action, actor) };
 }
 
 export interface Profile {

@@ -7,7 +7,8 @@ import { TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
 import { cleanTeamInput, validateTeam, type TeamErrors } from "./team-validation";
 import { memberId, toTeamRows } from "./teams";
 import type { Team, TeamInput } from "../app/teams/types";
-import { requireSession } from "./auth";
+import { actorWith, forbidden, requireActor } from "./auth";
+import { can, canEditTeam } from "./access";
 
 export type TeamResult<T> = { ok: true; data: T } | { ok: false; errors?: TeamErrors; message?: string };
 
@@ -32,7 +33,8 @@ const memberRows = (teamId: string, userIds: string[], stamp: string): Record<st
   userIds.map((userId) => ({ id: memberId(teamId, userId), teamId, userId, addedAt: stamp }));
 
 export async function createTeam(raw: Partial<TeamInput>): Promise<TeamResult<Team>> {
-  await requireSession();
+  const { denied } = await actorWith("teams.manage", "createTeam");
+  if (denied) return denied;
   const input = cleanTeamInput(raw);
   try {
     const { users, rows } = await context();
@@ -52,13 +54,19 @@ export async function createTeam(raw: Partial<TeamInput>): Promise<TeamResult<Te
 }
 
 export async function updateTeam(id: string, raw: Partial<TeamInput>): Promise<TeamResult<Team>> {
-  await requireSession();
+  const actor = await requireActor();
   const input = cleanTeamInput(raw);
   try {
     if (typeof id !== "string" || !id) return { ok: false, message: "This team no longer exists." };
     const { users, rows, members } = await context();
     const current = rows.find((t) => t.id === id);
     if (!current) return { ok: false, message: "This team no longer exists." };
+    if (!canEditTeam(actor.level, actor.uid, current)) return forbidden("updateTeam", actor);
+    // A lead's team decides whose roster they may edit, so only planners/admins add people or change the lead.
+    if (!can(actor.level, "teams.manage")) {
+      const before = new Set(current.memberIds);
+      if (input.memberIds.some((u) => !before.has(u)) || (input.leadId || null) !== current.leadId) return forbidden("updateTeam:members", actor);
+    }
     const errors = validateTeam(input, users, rows, current);
     if (Object.keys(errors).length) return { ok: false, errors };
 
@@ -82,7 +90,8 @@ export async function updateTeam(id: string, raw: Partial<TeamInput>): Promise<T
 
 /** Removes the team's memberships first, then the team. Users are never deleted. */
 export async function deleteTeam(id: string): Promise<TeamResult<{ membersRemoved: number }>> {
-  await requireSession();
+  const { denied } = await actorWith("teams.manage", "deleteTeam");
+  if (denied) return denied;
   if (typeof id !== "string" || !id) return { ok: false, message: "This team no longer exists." };
   try {
     await Promise.all([ensureTab("teams", TEAM_COLUMNS), ensureTab("team_members", TEAM_MEMBER_COLUMNS)]);

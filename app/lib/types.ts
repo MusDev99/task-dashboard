@@ -1,3 +1,5 @@
+import type { AccessLevel } from "../../lib/access";
+
 export interface User {
   id: string;
   name: string;
@@ -11,4 +13,5 @@ export interface User {
   phoneNumber: string | null;
   roleId: string | null;
   locationId: string | null;
+  access: AccessLevel;
 }

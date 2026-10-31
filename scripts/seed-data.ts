@@ -15,7 +15,8 @@ const toRows = (columns: readonly string[], items: Record<string, Cell>[]) =>
 
 // Seed data still uses stationCode; link each user to a location (created if needed).
 const { map: locationIds } = await ensureLocations(load("users").map((u) => String(u.stationCode ?? "")));
-const users = load("users").map((u) => ({ ...u, locationId: locationIds.get(String(u.stationCode ?? "").trim().toUpperCase()) ?? null }));
+// Seeded people start as admins (same as the access migration), so a fresh store is never locked out.
+const users = load("users").map((u) => ({ ...u, access: u.access ?? "admin", locationId: locationIds.get(String(u.stationCode ?? "").trim().toUpperCase()) ?? null }));
 
 await writeTable("users", [...USER_COLUMNS], toRows(USER_COLUMNS, users));
 console.log(`users: wrote ${users.length} rows`);

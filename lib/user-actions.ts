@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { appendRow, updateRowById, deleteRowsWhere, readTable, upsertRowsById } from "./store";
-import { getUsers } from "./actions";
+import { getUsers, readUsers } from "./actions";
 import { TEAM_COLUMNS, USER_COLUMNS, WORK_TASK_COLUMNS } from "./schema";
 import { cleanUserInput, validateUserInput, type FieldErrors, type UserInput, type UserRefs } from "./validation";
 import { getLocations, getRoles } from "./settings";
 import type { User } from "../app/lib/types";
-import { requireSession } from "./auth";
+import { actorWith } from "./auth";
+import { parseAccess, removesLastAdmin } from "./access";
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T }
@@ -34,7 +35,8 @@ const fail = (e: unknown): { ok: false; message: string } => {
 };
 
 export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<User>> {
-  await requireSession();
+  const { denied } = await actorWith("users.edit", "createUser");
+  if (denied) return denied;
   const input = cleanUserInput(raw);
   try {
     const users = await getUsers();
@@ -55,6 +57,7 @@ export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<
       roleId: input.roleId || null,
       avatar: input.avatar || null,
       locationId: input.locationId || null,
+      access: parseAccess(input.access || "member"),
     };
     await appendRow("users", USER_COLUMNS, user as unknown as Record<string, string | boolean | null>);
     refresh();
@@ -65,7 +68,8 @@ export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<
 }
 
 export async function updateUser(id: string, raw: Partial<UserInput>): Promise<ActionResult<User>> {
-  await requireSession();
+  const { denied } = await actorWith("users.edit", "updateUser");
+  if (denied) return denied;
   const input = cleanUserInput(raw);
   try {
     const users = await getUsers();
@@ -86,8 +90,14 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
       roleId: input.roleId || null,
       avatar: input.avatar || null,
       locationId: input.locationId || null,
+      access: input.access ? parseAccess(input.access) : current.access,
       updatedAt: nowStamp(),
     };
+    if (removesLastAdmin(users, id, user)) {
+      return user.isActive
+        ? { ok: false, errors: { access: "At least one active admin is required." } }
+        : { ok: false, message: "At least one active admin is required. Make someone else an admin first." };
+    }
     const found = await updateRowById("users", USER_COLUMNS, id, user as unknown as Record<string, string | boolean | null>);
     if (!found) return { ok: false, message: "This user no longer exists." };
     refresh();
@@ -99,8 +109,11 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
 
 /** Hard delete: cleans up everything that points at the user first, then removes the user. */
 export async function deleteUser(id: string): Promise<ActionResult<null>> {
-  await requireSession();
+  const { denied } = await actorWith("users.edit", "deleteUser");
+  if (denied) return denied;
   try {
+    // Strict read: an outage must not let the last admin be deleted.
+    if (removesLastAdmin(await readUsers(), id, null)) return { ok: false, message: "At least one active admin is required. Make someone else an admin first." };
     // Dependents first, so a failure never leaves rows pointing at a deleted user.
     await deleteRowsWhere("roster", "userId", id).catch((e) => {
       // The roster tab only exists after its first write; a missing tab just means nothing to delete.

@@ -11,7 +11,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. |
 | **Roster** | `/roster` | Two views (choice kept in `?view=`): **Day** (default on phones) — swipeable day strip, every person as a large tap row, per-code head-count, tap a row to set the code in a bottom sheet, *Set for all shown*; **Month** (default on desktop) — grid of every active person, click or drag cells to assign a shift or leave, `+` above a date to assign everyone. **Clear schedule** to bulk-remove, **Export / Upload CSV** (in the ⋮ menu on phones). One record per person per day. |
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views (on phones: task cards, swipeable lanes and an agenda). Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. **Smart assign (AI pilot)** in the task drawer suggests up to 3 people with reasons (roster availability, open workload, past tasks); Claude re-ranks and explains when `ANTHROPIC_API_KEY` is set, otherwise rules answer. It only suggests: you press *Assign*. |
-| **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
+| **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer, including each person's **Access level** (Admin, Planner, Lead, Member). Deleting a user also removes their roster rows and unassigns their work tasks. |
 | **Teams** | `/teams` | Group registered users into teams (name, description, colour, optional lead). A person can be in several teams. Cards (lead + members) or table with stats, search, member filter, sorting and pagination; add/edit in a two-step drawer (details → members, crown to pick the lead). Teams power the **team filter** on Roster and Tasks and narrow the task assignee picker (tasks still have one personal assignee, never a team). |
 | **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
 
@@ -26,7 +26,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 
 | Table | Purpose | Created |
 |---|---|---|
-| `users` | People (id, email, name, employeeId, locationId, roleId, …) | `seed:data` |
+| `users` | People (id, email, name, employeeId, locationId, roleId, access, …) | `seed:data` |
 | `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
 | `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
@@ -39,7 +39,7 @@ Row 1 of every table is the header (columns are defined in `lib/schema.ts`). **D
 
 ### Migrating older data (`npm run migrate:settings`)
 
-Safe to re-run. It seeds the settings tables from `json/` if they're missing, backs up the `users` table as `users_backup_YYYYMMDD`, replaces the old `stationCode` column with `locationId` (creating a location for each distinct station code), and creates a role for each role id in use (rename them in **Settings → Roles**). Until it has run, the app shows a banner telling you to run it.
+Safe to re-run. It seeds the settings tables from `json/` if they're missing, backs up the `users` table as `users_backup_YYYYMMDD`, replaces the old `stationCode` column with `locationId` (creating a location for each distinct station code), creates a role for each role id in use (rename them in **Settings → Roles**), and adds the `access` column with **every existing person set to Admin** so nobody loses access; then lower people's levels on **Users**. Until it has run, the app shows a banner telling you to run it.
 
 ## Getting started
 
@@ -89,7 +89,7 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ### AI-driven development workflow
 
-`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
+`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. `product-owner` (also a subagent in `.claude/agents/`) acts as a workforce-management / resource-planning Product Owner: gap analysis against `references/capability-map.md`, RICE backlog in `docs/product/backlog.md`, opportunity briefs with stories and acceptance criteria in `docs/product/briefs/`, handed to `dev-workflow`. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
 
 ## Project structure
 
@@ -106,6 +106,21 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ## Security
 
+### Access levels
+Every person has one access level (separate from their job **Role**). The server checks it on every change, so hidden buttons are only a convenience.
+
+| Can… | Admin | Planner | Lead | Member |
+|---|---|---|---|---|
+| View Whereabouts, Roster, Tasks, Teams | ✅ | ✅ | ✅ | ✅ |
+| Edit roster cells | ✅ | ✅ | people in teams they lead | — |
+| Clear schedule / import roster CSV | ✅ | ✅ | — | — |
+| Create, edit, delete tasks | ✅ | ✅ | ✅ | status of own tasks only |
+| Teams | ✅ | ✅ | edit details of teams they lead | — |
+| Users and access levels | ✅ | — | — | — |
+| Settings | ✅ | view only | — | — |
+
+New people start as **Member**. There must always be one active Admin. A change of level applies to the person's next action. Run `npm run migrate:settings` once after upgrading (until then everyone keeps full access).
+
 Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-24.md`).
 
 ## Progressive Web App
@@ -121,6 +136,8 @@ To ship a service-worker change that must evict old caches, bump `VERSION` in `p
 
 ## Changelog
 
+- **Unreleased · Access levels (RBAC), part 1**: Admin / Planner / Lead / Member set per person on **Users**; every change is checked on the server (leads only for people in teams they lead, members only their own task status); last active admin is protected; `migrate:settings` makes existing people Admin. Hiding controls per level comes next.
+- **Unreleased · Product Owner skill**: `product-owner` skill + subagent (WFM/resource-planning SME) with domain reference, capability map and seeded backlog.
 - **Unreleased · Mobile menu polish**: the phone drawer has a compact header (no "Menu" label, one-line tagline), only the links scroll (thin scrollbar), and your account + **Sign out** stay pinned at the bottom; on short/landscape screens the header and spacing shrink so everything fits.
 - **Unreleased · Legacy quiz data removed**: the last leaderboard leftovers are gone: `json/tasks.json`, the `tasks` table schema, seeding it in `npm run seed:data` (now seeds `users` only) and the cleanup step when a user is deleted. An old `tasks` tab in the data store is no longer used and can be deleted by hand.
 - **Unreleased · Smart assign (AI pilot)**: *Smart assign* panel in the task drawer suggests up to 3 assignees with reasons. Rules score availability (50) + workload (30) + past-task experience (20); with `ANTHROPIC_API_KEY` set, Claude re-ranks and explains the top 8 (pseudonymised: no names, emails or ids leave the server). Falls back to the rules on no key, timeout, refusal or rate limit. Never auto-assigns. Spec: `docs/features/smart-assign/feature.md`.
