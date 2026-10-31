@@ -1,0 +1,57 @@
+# Enforces BRANCHING.md rule 7: a PR's head branch is deleted once it is merged.
+# Copy unchanged to every repo. It backs up the repo setting
+# "Automatically delete head branches" (keep that on too), so a branch is
+# removed even where the setting was missed. No third-party actions.
+name: branch-cleanup
+
+on:
+  # Plain pull_request (never pull_request_target): fork PRs get a read-only
+  # token, and fork branches are skipped below anyway.
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  delete-merged-branch:
+    # Merged PRs only, from this repo (not forks), never the default branch.
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.head.ref != github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # delete the ref
+      pull-requests: read   # look for PRs stacked on this branch
+    steps:
+      - name: Delete head branch
+        env:
+          # Passed through env, never interpolated into the script (injection-safe).
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+
+          case "$BRANCH" in
+            main|master|develop|release/*|gh-pages)
+              echo "⏭️ '$BRANCH' is a long-lived branch, keeping it."
+              exit 0 ;;
+          esac
+
+          # Deleting a branch that another open PR targets would close that PR.
+          base=$(jq -rn --arg b "$BRANCH" '$b | @uri')
+          stacked=$(gh api "repos/$REPO/pulls?state=open&base=$base&per_page=1" --jq 'length')
+          if [ "$stacked" != "0" ]; then
+            echo "::warning::Keeping '$BRANCH': an open PR is based on it. Retarget it to main, then delete the branch."
+            exit 0
+          fi
+
+          if out=$(gh api -X DELETE "repos/$REPO/git/refs/heads/$BRANCH" 2>&1); then
+            echo "🧹 Deleted '$BRANCH'."
+          elif grep -q 'Reference does not exist' <<<"$out"; then
+            echo "✅ '$BRANCH' is already gone (repo auto-delete setting)."
+          else
+            echo "::error::Could not delete '$BRANCH': $out"
+            exit 1
+          fi
