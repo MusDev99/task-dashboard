@@ -1,4 +1,5 @@
 import type { User } from "../app/lib/types";
+import { isAccessLevel } from "./access";
 
 export interface UserInput {
   name: string;
@@ -9,6 +10,8 @@ export interface UserInput {
   roleId: string;
   avatar: string;
   isActive: boolean;
+  /** Access level; empty = keep the current one (edit) or Member (new). */
+  access: string;
 }
 
 export type FieldErrors = Partial<Record<keyof UserInput, string>>;
@@ -25,6 +28,7 @@ export function cleanUserInput(raw: Partial<UserInput>): UserInput {
     roleId: t(raw.roleId),
     avatar: t(raw.avatar),
     isActive: raw.isActive !== false,
+    access: t(raw.access).toLowerCase(),
   };
 }
 
@@ -61,6 +65,7 @@ export function validateUserInput(input: UserInput, existing: User[], refs: User
   if (input.phoneNumber && !/^\+?[\d\s()-]{6,20}$/.test(input.phoneNumber)) {
     errors.phoneNumber = "Enter a valid phone number";
   }
+  if (input.access && !isAccessLevel(input.access)) errors.access = "Pick an access level";
   if (input.avatar && !/^https:\/\/\S+$/i.test(input.avatar)) {
     errors.avatar = "Avatar must be an https:// URL";
   }

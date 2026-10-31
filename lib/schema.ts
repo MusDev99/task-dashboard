@@ -1,13 +1,11 @@
 // Column order of each table (row 1 = header).
 export const USER_COLUMNS = [
   "id", "email", "name", "employeeId", "googleId", "isActive", "joinedDate",
-  "updatedAt", "phoneNumber", "roleId", "avatar", "locationId",
+  "updatedAt", "phoneNumber", "roleId", "avatar", "locationId", "access",
 ] as const;
-
-export const TASK_COLUMNS = [
-  "id", "userId", "taskTitle", "difficulty", "correctness",
-  "timeTakenSeconds", "maxTimeSeconds", "completedAt",
-] as const;
+// `access` (admin | planner | lead | member) is optional when reading: a users tab without the column
+// predates access levels, so everyone keeps full access until `npm run migrate:settings` adds it.
+export const USER_REQUIRED_COLUMNS = USER_COLUMNS.filter((c) => c !== "access");
 
 // One row per user per day. id = `${userId}_${date}` (date = YYYY-MM-DD), so upserts can't duplicate.
 export const ROSTER_COLUMNS = ["id", "userId", "date", "type", "code", "updatedAt"] as const;

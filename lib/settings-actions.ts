@@ -7,7 +7,7 @@ import { getTaskConfig, DEFAULT_TASK_STATUSES, DEFAULT_STORY_POINTS } from "./ta
 import { getLocations, getRoles, readSettingsTab } from "./settings";
 import { APP_SETTING_COLUMNS } from "./schema";
 import { isMissingTab } from "./cells";
-import { requireSession } from "./auth";
+import { actorWith, requireSession } from "./auth";
 import {
   SPECS, cleanEntity, keyOf, validateEntity, validateGeneral,
   type EntityKind, type GeneralInput, type SettingErrors, type SettingRecord,
@@ -86,7 +86,8 @@ function usageText(kind: EntityKind, n: number): string {
 }
 
 export async function saveSetting(kind: EntityKind, originalKey: string | null, raw: Record<string, unknown>): Promise<SettingsResult> {
-  await requireSession();
+  const { denied } = await actorWith("settings.edit", "saveSetting");
+  if (denied) return denied;
   try {
     const spec = SPECS[kind];
     const existing = await currentRecords(kind);
@@ -122,7 +123,8 @@ export async function saveSetting(kind: EntityKind, originalKey: string | null, 
 }
 
 export async function setSettingActive(kind: EntityKind, key: string, active: boolean): Promise<SettingsResult> {
-  await requireSession();
+  const { denied } = await actorWith("settings.edit", "setSettingActive");
+  if (denied) return denied;
   const record = (await currentRecords(kind)).find((x) => keyOf(kind, x) === key);
   if (!record) return { ok: false, message: `This ${SPECS[kind].noun} no longer exists.` };
   const res = await saveSetting(kind, key, { ...record, active });
@@ -131,7 +133,8 @@ export async function setSettingActive(kind: EntityKind, key: string, active: bo
 }
 
 export async function deleteSetting(kind: EntityKind, key: string): Promise<SettingsResult> {
-  await requireSession();
+  const { denied } = await actorWith("settings.edit", "deleteSetting");
+  if (denied) return denied;
   try {
     const spec = SPECS[kind];
     const existing = await currentRecords(kind);
@@ -154,7 +157,8 @@ export async function deleteSetting(kind: EntityKind, key: string): Promise<Sett
 }
 
 export async function saveGeneral(raw: Record<string, unknown>): Promise<SettingsResult> {
-  await requireSession();
+  const { denied } = await actorWith("settings.edit", "saveGeneral");
+  if (denied) return denied;
   try {
     const g: GeneralInput = {
       timezone: String(raw.timezone ?? "").trim(),

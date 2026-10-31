@@ -11,7 +11,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. |
 | **Roster** | `/roster` | Two views (choice kept in `?view=`): **Day** (default on phones) — swipeable day strip, every person as a large tap row, per-code head-count, tap a row to set the code in a bottom sheet, *Set for all shown*; **Month** (default on desktop) — grid of every active person, click or drag cells to assign a shift or leave, `+` above a date to assign everyone. **Clear schedule** to bulk-remove, **Export / Upload CSV** (in the ⋮ menu on phones). One record per person per day. |
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views (on phones: task cards, swipeable lanes and an agenda). Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. **Smart assign (AI pilot)** in the task drawer suggests up to 3 people with reasons (roster availability, open workload, past tasks); Claude re-ranks and explains when `ANTHROPIC_API_KEY` is set, otherwise rules answer. It only suggests: you press *Assign*. |
-| **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer. Deleting a user also removes their roster rows and unassigns their work tasks. |
+| **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer, including each person's **Access level** (Admin, Planner, Lead, Member). Deleting a user also removes their roster rows and unassigns their work tasks. |
 | **Teams** | `/teams` | Group registered users into teams (name, description, colour, optional lead). A person can be in several teams. Cards (lead + members) or table with stats, search, member filter, sorting and pagination; add/edit in a two-step drawer (details → members, crown to pick the lead). Teams power the **team filter** on Roster and Tasks and narrow the task assignee picker (tasks still have one personal assignee, never a team). |
 | **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
 
@@ -19,15 +19,14 @@ A resource-management system for small and medium teams: **plan work capacity fr
 
 1. Provision the data store and a service identity with read/write access to it; download its credentials JSON into `keys/` (git-ignored).
 2. Copy `.env.example` to `.env` and set `DATA_STORE_ID` and `DATA_STORE_KEY_PATH` (path to the credentials JSON). On hosts without a file system (e.g. Netlify) set `DATA_STORE_CLIENT_EMAIL` + `DATA_STORE_PRIVATE_KEY` instead and leave `DATA_STORE_KEY_PATH` unset.
-3. Seed sample data (creates/overwrites the `users` and `tasks` tables): `npm run seed:data`
+3. Seed sample data (creates/overwrites the `users` table): `npm run seed:data`
 4. Create the settings tables: `npm run migrate:settings` (see below).
 
 ### Tables
 
 | Table | Purpose | Created |
 |---|---|---|
-| `users` | People (id, email, name, employeeId, locationId, roleId, …) | `seed:data` |
-| `tasks` | Legacy quiz completions (no longer shown; rows are still removed when a user is deleted) | `seed:data` |
+| `users` | People (id, email, name, employeeId, locationId, roleId, access, …) | `seed:data` |
 | `roster` | One row per user per day (`id = userId_YYYY-MM-DD`) | automatically on first roster edit |
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
 | `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
@@ -40,7 +39,7 @@ Row 1 of every table is the header (columns are defined in `lib/schema.ts`). **D
 
 ### Migrating older data (`npm run migrate:settings`)
 
-Safe to re-run. It seeds the settings tables from `json/` if they're missing, backs up the `users` table as `users_backup_YYYYMMDD`, replaces the old `stationCode` column with `locationId` (creating a location for each distinct station code), and creates a role for each role id in use (rename them in **Settings → Roles**). Until it has run, the app shows a banner telling you to run it.
+Safe to re-run. It seeds the settings tables from `json/` if they're missing, backs up the `users` table as `users_backup_YYYYMMDD`, replaces the old `stationCode` column with `locationId` (creating a location for each distinct station code), creates a role for each role id in use (rename them in **Settings → Roles**), and adds the `access` column with **every existing person set to Admin** so nobody loses access; then lower people's levels on **Users**. Until it has run, the app shows a banner telling you to run it.
 
 ## Getting started
 
@@ -106,6 +105,21 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 - `CLAUDE.md` project rules for contributors/AI (architecture, UX standard, definition of done)
 
 ## Security
+
+### Access levels
+Every person has one access level (separate from their job **Role**). The server checks it on every change, so hidden buttons are only a convenience.
+
+| Can… | Admin | Planner | Lead | Member |
+|---|---|---|---|---|
+| View Whereabouts, Roster, Tasks, Teams | ✅ | ✅ | ✅ | ✅ |
+| Edit roster cells | ✅ | ✅ | people in teams they lead | — |
+| Clear schedule / import roster CSV | ✅ | ✅ | — | — |
+| Create, edit, delete tasks | ✅ | ✅ | ✅ | status of own tasks only |
+| Teams | ✅ | ✅ | edit details of teams they lead | — |
+| Users and access levels | ✅ | — | — | — |
+| Settings | ✅ | view only | — | — |
+
+New people start as **Member**. There must always be one active Admin. A change of level applies to the person's next action. Run `npm run migrate:settings` once after upgrading (until then everyone keeps full access).
 
 Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-24.md`).
 

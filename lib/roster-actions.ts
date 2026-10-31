@@ -2,14 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { ensureTab, upsertRowsById, deleteRowsByIds, readTable } from "./store";
-import { getUsers, getRoster } from "./actions";
+import { getUsers, getRoster, loadTeams } from "./actions";
 import { getShiftConfig } from "./shifts";
 import { ROSTER_COLUMNS } from "./schema";
 import { rosterId, isRealDate } from "./roster-dates";
 import { validateCells, validMonth } from "./roster-validation";
 import type { ActionResult } from "./user-actions";
 import type { CellRef, RosterEntry } from "../app/roster/types";
-import { requireSession } from "./auth";
+import { actorWith, forbidden, requireSession, type Actor } from "./auth";
+import { ledUserIds, rosterRefused, rosterScoped } from "./access";
 
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 const refresh = () => {
@@ -27,10 +28,29 @@ async function context() {
   return { userIds: new Set(users.map((u) => u.id)), users, config };
 }
 
+/** Refusal when the actor may not edit some of these people's cells (leads: only people in teams they lead). */
+async function rosterDenied(actor: Actor, cells: CellRef[], action: string): Promise<{ ok: false; message: string } | null> {
+  if (!Array.isArray(cells)) return null; // shape errors are reported by validateCells
+  let scope: Set<string> | null = null;
+  if (rosterScoped(actor.level)) {
+    const loaded = await loadTeams();
+    if (loaded.error) throw new Error("teams could not be loaded"); // fail closed
+    scope = ledUserIds(actor.uid, loaded.teams, loaded.members);
+  }
+  const refused = rosterRefused(actor.level, cells.map((c) => String(c?.userId ?? "")), scope);
+  if (refused.length === 0) return null;
+  forbidden(action, actor);
+  const n = refused.length;
+  return { ok: false, message: `You can only change the roster of people in teams you lead (${n} ${n === 1 ? "person" : "people"} outside them). Nothing was saved.` };
+}
+
 /** Assign one shift/leave code to the given cells (one row per user per day: existing rows are overwritten). */
 export async function setCells(cells: CellRef[], code: string): Promise<ActionResult<{ count: number }>> {
-  await requireSession();
+  const { actor, denied } = await actorWith("roster.edit", "setCells");
+  if (denied) return denied;
   try {
+    const outside = await rosterDenied(actor, cells, "setCells");
+    if (outside) return outside;
     const { userIds, config } = await context();
     const error = validateCells(cells, userIds, config, code);
     if (error) return { ok: false, message: error };
@@ -52,8 +72,11 @@ export async function setCells(cells: CellRef[], code: string): Promise<ActionRe
 
 /** Remove the roster rows for the given cells (empty cell = no row). */
 export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count: number }>> {
-  await requireSession();
+  const { actor, denied } = await actorWith("roster.edit", "clearCells");
+  if (denied) return denied;
   try {
+    const outside = await rosterDenied(actor, cells, "clearCells");
+    if (outside) return outside;
     const { userIds, config } = await context();
     const error = validateCells(cells, userIds, config);
     if (error) return { ok: false, message: error };
@@ -67,7 +90,8 @@ export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count
 
 /** Bulk clear: every roster row of the given users within one month. */
 export async function clearSchedule(userIds: string[], month: string): Promise<ActionResult<{ count: number }>> {
-  await requireSession();
+  const { denied } = await actorWith("roster.bulk", "clearSchedule");
+  if (denied) return denied;
   try {
     if (!validMonth(month)) return { ok: false, message: "Invalid month." };
     if (!Array.isArray(userIds) || userIds.length === 0) return { ok: false, message: "Select at least one resource." };
@@ -96,7 +120,8 @@ export interface ImportError {
 
 /** Resolve and validate CSV rows. With `apply=false` it only reports what would happen. */
 export async function importRoster(rows: ImportRow[], apply: boolean): Promise<ActionResult<{ count: number; errors: ImportError[] }>> {
-  await requireSession();
+  const { denied } = await actorWith("roster.bulk", "importRoster");
+  if (denied) return denied;
   try {
     if (!Array.isArray(rows) || rows.length === 0) return { ok: false, message: "The file has no data rows." };
     if (rows.length > 5000) return { ok: false, message: "Too many rows (max 5,000)." };

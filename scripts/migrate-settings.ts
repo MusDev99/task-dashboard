@@ -3,6 +3,7 @@
 //  2. backs up the users tab, then replaces users.stationCode with users.locationId
 //     (creating a location per distinct station code)
 //  3. creates a role for every roleId in use
+//  4. adds users.access (access levels); every existing person becomes an admin, so nobody loses access
 //
 //   node --env-file=.env scripts/migrate-settings.ts
 import { readTable, writeTable, type Cell } from "../lib/store.ts";
@@ -38,3 +39,15 @@ if (header.includes("stationCode") && !header.includes("locationId")) {
 
 const rolesCreated = await ensureRoles(users.map((u) => String(u.roleId ?? "")));
 console.log(`Roles: ${rolesCreated} created`);
+
+// 4. Access levels. Before this column existed everyone could do everything, so existing people start as
+//    admins; the owner then lowers levels on /users. Only runs once: an existing column is left alone.
+const current = await readTable("users");
+const cols = current.length ? Object.keys(current[0]) : [];
+if (cols.length && !cols.includes("access")) {
+  const next = [...cols, "access"];
+  await writeTable("users", next, current.map((u) => next.map((h) => (h === "access" ? "admin" : u[h] ?? ""))));
+  console.log(`Users: added access column (${current.length} people set to admin; lower them on /users)`);
+} else {
+  console.log(cols.includes("access") ? "Users already have access levels (not changed)" : "Users tab is empty; access column not needed");
+}

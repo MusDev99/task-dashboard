@@ -1,10 +1,11 @@
 import { readTable, type Cell } from "./store";
-import { USER_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
+import { USER_REQUIRED_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
 import type { User } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
 import type { Team, TeamMember } from "../app/teams/types";
 import { MONTH_RE } from "./roster-dates";
+import { parseAccess } from "./access";
 
 // Tables: see lib/schema.ts.
 
@@ -25,6 +26,8 @@ function toUser(r: Record<string, Cell>): User {
     roleId: str(r.roleId),
     avatar: str(r.avatar),
     locationId: str(r.locationId),
+    // No access column yet (pre-migration) = everyone keeps the full access they had before levels existed.
+    access: "access" in r ? parseAccess(r.access) : "admin",
   };
 }
 
@@ -40,7 +43,7 @@ function assertColumns(tab: string, rows: Record<string, Cell>[], columns: reado
 
 export async function readUsers(): Promise<User[]> {
   const rows = await readTable("users");
-  assertColumns("users", rows, USER_COLUMNS);
+  assertColumns("users", rows, USER_REQUIRED_COLUMNS);
   return rows.map(toUser);
 }
 

@@ -8,6 +8,7 @@ import Avatar from "../components/ui/Avatar";
 import { CloseIcon } from "../components/ui/Icons";
 import { useFocusTrap } from "../components/ui/useFocusTrap";
 import type { Option, UserOptions, UserRow } from "./types";
+import { ACCESS_LABELS, ACCESS_LEVELS, parseAccess } from "../../lib/access";
 
 interface Props {
   mode: "add" | "edit";
@@ -18,11 +19,11 @@ interface Props {
   onSaved: (message: string) => void;
 }
 
-const empty: UserInput = { name: "", email: "", employeeId: "", locationId: "", phoneNumber: "", roleId: "", avatar: "", isActive: true };
+const empty: UserInput = { name: "", email: "", employeeId: "", locationId: "", phoneNumber: "", roleId: "", avatar: "", isActive: true, access: "member" };
 
 export default function UserDrawer({ mode, user, allUsers, options, onClose, onSaved }: Props) {
   const initial: UserInput = user
-    ? { name: user.name, email: user.email, employeeId: user.employeeId ?? "", locationId: user.locationId ?? "", phoneNumber: user.phoneNumber ?? "", roleId: user.roleId ?? "", avatar: user.avatar ?? "", isActive: user.isActive }
+    ? { name: user.name, email: user.email, employeeId: user.employeeId ?? "", locationId: user.locationId ?? "", phoneNumber: user.phoneNumber ?? "", roleId: user.roleId ?? "", avatar: user.avatar ?? "", isActive: user.isActive, access: user.access }
     : empty;
   const [form, setForm] = useState<UserInput>(initial);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -63,7 +64,9 @@ export default function UserDrawer({ mode, user, allUsers, options, onClose, onS
     startTransition(async () => {
       const res = mode === "add" ? await createUser(form) : await updateUser(user!.id, form);
       if (res.ok) {
-        onSaved(mode === "add" ? `Added ${cleanUserInput(form).name}` : `Saved changes to ${cleanUserInput(form).name}`);
+        const name = cleanUserInput(form).name;
+        const level = ACCESS_LABELS[parseAccess(form.access)].label;
+        onSaved(mode === "add" ? `Added ${name} as ${level}` : form.access !== initial.access ? `${name} is now ${level === "Admin" ? "an" : "a"} ${level}` : `Saved changes to ${name}`);
       } else {
         if (res.errors) setErrors(res.errors);
         setServerError(res.message ?? (res.errors ? "Please fix the highlighted fields." : null));
@@ -132,6 +135,19 @@ export default function UserDrawer({ mode, user, allUsers, options, onClose, onS
             <div className="field-row">
               {field("phoneNumber", "Phone", { type: "tel", placeholder: "+60 12-345 6789" })}
               {select("roleId", "Role", options.roles, "No role")}
+            </div>
+            <div className="field">
+              <label htmlFor="f-access">Access level</label>
+              <select
+                id="f-access" name="access" className="select" style={{ minHeight: "var(--touch)" }} value={form.access}
+                aria-invalid={errors.access ? true : undefined} aria-describedby={errors.access ? "e-access" : "h-access"}
+                onChange={(e) => set("access", e.target.value)} onBlur={() => blur("access")}
+              >
+                {ACCESS_LEVELS.map((l) => <option key={l} value={l}>{ACCESS_LABELS[l].label}</option>)}
+              </select>
+              {errors.access
+                ? <span id="e-access" className="field-error" role="alert">{errors.access}</span>
+                : <span id="h-access" className="field-hint">{ACCESS_LABELS[parseAccess(form.access)].hint}. Separate from the job role.</span>}
             </div>
             {field("avatar", "Avatar URL", { type: "url", placeholder: "https://…", hint: "Optional. Must be an https:// image link." })}
             <div className="toggle-row">

@@ -9,7 +9,8 @@ import { WORK_TASK_COLUMNS } from "./schema";
 import { cleanTaskInput, validateTask, type TaskErrors } from "./task-validation";
 import type { Availability, TaskInput, WorkTask } from "../app/tasks/types";
 import type { Cell } from "./store";
-import { requireSession } from "./auth";
+import { actorWith, forbidden, requireActor, requireSession } from "./auth";
+import { canSetTaskStatus } from "./access";
 
 export type TaskResult<T> = { ok: true; data: T } | { ok: false; errors?: TaskErrors; message?: string };
 
@@ -43,7 +44,8 @@ function nextCode(tasks: WorkTask[], prefix: string): string {
 }
 
 export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
-  await requireSession();
+  const { denied } = await actorWith("tasks.edit", "createTask");
+  if (denied) return denied;
   try {
     const { users, config, tasks } = await context();
     const input = cleanTaskInput(raw, config);
@@ -60,7 +62,8 @@ export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<Wo
 }
 
 export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
-  await requireSession();
+  const { denied } = await actorWith("tasks.edit", "updateTask");
+  if (denied) return denied;
   try {
     const { users, config, tasks } = await context();
     const current = tasks.find((t) => t.id === id);
@@ -80,11 +83,13 @@ export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<T
 }
 
 export async function setTaskStatus(id: string, status: string): Promise<TaskResult<WorkTask>> {
-  await requireSession();
+  const actor = await requireActor();
   try {
     const { config, tasks } = await context();
     const current = tasks.find((t) => t.id === id);
     if (!current) return { ok: false, message: "This task no longer exists." };
+    // Members may move only their own tasks; editors may move any.
+    if (!canSetTaskStatus(actor.level, actor.uid, current.assigneeId)) return forbidden("setTaskStatus", actor);
     const def = config.statuses.find((s) => s.key === status);
     if (!def || (!def.active && current.status !== status)) return { ok: false, message: "That status isn't available." };
     const task: WorkTask = { ...current, status, updatedAt: nowStamp() };
@@ -98,7 +103,8 @@ export async function setTaskStatus(id: string, status: string): Promise<TaskRes
 
 /** Deletes a task and its subtasks (subtasks first, so none is ever orphaned). */
 export async function deleteTask(id: string): Promise<TaskResult<{ subtasksDeleted: number }>> {
-  await requireSession();
+  const { denied } = await actorWith("tasks.edit", "deleteTask");
+  if (denied) return denied;
   try {
     const { tasks } = await context();
     if (!tasks.some((t) => t.id === id)) return { ok: false, message: "This task no longer exists." };

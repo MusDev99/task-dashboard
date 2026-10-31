@@ -269,6 +269,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
   }
   .sidebar.is-open { transform: none; visibility: visible; transition: transform 280ms cubic-bezier(0.4, 0, 0.2, 1); }
   .sidebar .sidebar-close { display: inline-flex; }
+  /* Drawer: compact header, only the links scroll, account + Sign out stay pinned at the bottom. */
+  .sidebar.is-open { overflow: hidden; }
+  .sidebar-brand { margin-bottom: 1rem; padding: 0 0.75rem 0 1.25rem; }
+  .brand-tagline { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-section { display: none; }
+  .sidebar-nav { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--border-subtle) transparent; }
+  .sidebar-nav::-webkit-scrollbar { width: 4px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 4px; }
+  .sidebar-foot { padding: 0.75rem 1.25rem; }
   .sidebar-backdrop { display: block; position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.6); animation: fade 150ms ease-out; }
   .bottom-nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
@@ -283,6 +292,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .bottom-nav-link:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
   /* Fixed bottom elements sit above the tab bar. */
   .toast-region { bottom: calc(68px + env(safe-area-inset-bottom)) !important; }
+}
+/* Short screens (landscape phones): keep every link and Sign out within reach. */
+@media (max-width: 768px) and (max-height: 520px) {
+  .sidebar { padding-top: calc(0.75rem + env(safe-area-inset-top)); }
+  .sidebar-brand { margin-bottom: 0.5rem; }
+  .brand-mark { width: 30px; height: 30px; font-size: 0.95rem; }
+  .brand-tagline, .sidebar-user-email { display: none; }
+  .sidebar-nav ul { gap: 0; }
+  .sidebar-foot { padding: 0.5rem 1.25rem; }
 }
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .sidebar.is-open { transition: none; }
