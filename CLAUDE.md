@@ -113,7 +113,7 @@ Start every feature, fix or refactor with `/dev-workflow` (brainstorm -> plan ->
 Gate commands: `npm run verify` (tsc + tests + build) · `npm test` · `npm run smoke -- <url>` (post-deploy auth/header checks). Never mark work done while a gate is red; report real output.
 
 ## Git strategy
-Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agent session may be given a fixed branch: use it). Conventional Commits. Commit only when asked, after `npm run verify`. Docs travel with the code (README + this file). SemVer tags `vX.Y.Z`; details in the `release` skill.
+Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agent session may be given a fixed branch: use it). Conventional Commits (PR titles checked by `branch-policy.yml`; `branch-cleanup.yml` deletes merged branches). Commit only when asked, after `npm run verify`. Docs travel with the code (README + this file). SemVer tags `vX.Y.Z`; details in the `release` skill.
 
 ## Documentation rule (always)
 **Whenever you add a feature or change how a feature works, update `README.md` in the same change** — the features table, tab list, setup/migration/deploy steps, project structure and a one-line entry at the top of the Changelog. Update this file (`CLAUDE.md`) too if the change adds or alters a rule, tab, config location or convention. A change isn't done until the docs match the code.

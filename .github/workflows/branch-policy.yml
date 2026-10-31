@@ -1,0 +1,39 @@
+# Enforces BRANCHING.md: branch prefix + Conventional Commit PR title.
+# Copy unchanged to every repo and add "branch-policy" as a required check.
+name: branch-policy
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  branch-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name and PR title
+        env:
+          # Passed through env, never interpolated into the script (injection-safe).
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          status=0
+
+          branch_re='^(feat|fix|chore|docs|claude)/[a-z0-9][a-z0-9._-]*$'
+          if [[ "$HEAD_REF" =~ $branch_re ]]; then
+            echo "✅ branch: $HEAD_REF"
+          else
+            echo "::error::Branch '$HEAD_REF' must be <type>/<kebab-name> with type feat|fix|chore|docs (or claude for agent sessions). See BRANCHING.md."
+            status=1
+          fi
+
+          title_re='^(feat|fix|docs|chore|refactor|perf|test|ci|build|revert)(\([a-z0-9._/-]+\))?!?: [^ ].{0,99}$'
+          if [[ "$PR_TITLE" =~ $title_re ]] && [[ "$PR_TITLE" != *. ]]; then
+            echo "✅ title: $PR_TITLE"
+          else
+            echo "::error::PR title must follow Conventional Commits, e.g. 'feat(scope): add thing' (no trailing period, max ~100 chars). See BRANCHING.md."
+            status=1
+          fi
+
+          exit $status

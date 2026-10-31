@@ -120,7 +120,20 @@ Run the project's security-review skill before releases and after adding a serve
 
 To ship a service-worker change that must evict old caches, bump `VERSION` in `public/sw.js`.
 
+## 🌿 Branches
+
+Follows [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/`, `fix/`, `chore/` or `docs/` branches, Conventional Commit PR titles, squash merge.
+
+| Workflow | What it does |
+|---|---|
+| `.github/workflows/branch-policy.yml` | Fails a PR whose branch name or title breaks the rules |
+| `.github/workflows/branch-cleanup.yml` | Deletes the PR's branch once it is merged (skips forks, the default branch and branches another open PR is based on) |
+
+Keep **Settings → General → Automatically delete head branches** on as well; the workflow is the backup.
+
 ## Changelog
+
+- **Unreleased · Branch cleanup**: `branch-policy.yml` checks branch names and Conventional Commit PR titles; `branch-cleanup.yml` deletes a PR's branch after it is merged.
 
 - **Unreleased · Shared code-review skill**: `.agents/skills/code-review/SKILL.md`, the same 7-area review checklist (intent, readability, tests, security, performance, style, docs) used in every repo, findings by severity.
 
