@@ -89,7 +89,7 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ### AI-driven development workflow
 
-`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. `product-owner` (also a subagent in `.claude/agents/`) acts as a workforce-management / resource-planning Product Owner: gap analysis against `references/capability-map.md`, RICE backlog in `docs/product/backlog.md`, opportunity briefs with stories and acceptance criteria in `docs/product/briefs/`, handed to `dev-workflow`. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
+`.claude/skills/` contains the pipeline **brainstorm -> plan -> feature analysis -> implement -> verify (performance, SEO, quality, constraints) -> validate (unit tests + `feature.md` checklist) -> git -> release**: `dev-workflow`, `feature-checklist`, `code-review-checklist`, `owasp-audit`, `release`. The shared review checklist used in every MusDev99 repo is `.agents/skills/code-review/SKILL.md`; `code-review-checklist` adds this repo's rules and the report file. Per-feature files live in `docs/features/<slug>/feature.md`, reviews in `docs/reviews/`, audits in `docs/audits/`.
 
 ## Project structure
 
@@ -134,12 +134,23 @@ Run the project's security-review skill before releases and after adding a serve
 
 To ship a service-worker change that must evict old caches, bump `VERSION` in `public/sw.js`.
 
+## 🌿 Branches
+
+Follows [BRANCHING.md](https://github.com/MusDev99/agentic-coding-style/blob/main/BRANCHING.md): `feat/`, `fix/`, `chore/` or `docs/` branches, Conventional Commit PR titles, squash merge.
+
+| Workflow | What it does |
+|---|---|
+| `.github/workflows/branch-policy.yml` | Fails a PR whose branch name or title breaks the rules |
+| `.github/workflows/branch-cleanup.yml` | Deletes the PR's branch once it is merged (skips forks, the default branch and branches another open PR is based on) |
+
+Keep **Settings → General → Automatically delete head branches** on as well; the workflow is the backup.
+
 ## Changelog
 
-- **Unreleased · Access levels (RBAC), part 1**: Admin / Planner / Lead / Member set per person on **Users**; every change is checked on the server (leads only for people in teams they lead, members only their own task status); last active admin is protected; `migrate:settings` makes existing people Admin. Hiding controls per level comes next.
-- **Unreleased · Product Owner skill**: `product-owner` skill + subagent (WFM/resource-planning SME) with domain reference, capability map and seeded backlog.
-- **Unreleased · Mobile menu polish**: the phone drawer has a compact header (no "Menu" label, one-line tagline), only the links scroll (thin scrollbar), and your account + **Sign out** stay pinned at the bottom; on short/landscape screens the header and spacing shrink so everything fits.
-- **Unreleased · Legacy quiz data removed**: the last leaderboard leftovers are gone: `json/tasks.json`, the `tasks` table schema, seeding it in `npm run seed:data` (now seeds `users` only) and the cleanup step when a user is deleted. An old `tasks` tab in the data store is no longer used and can be deleted by hand.
+- **Unreleased · Branch cleanup**: `branch-policy.yml` checks branch names and Conventional Commit PR titles; `branch-cleanup.yml` deletes a PR's branch after it is merged.
+
+- **Unreleased · Shared code-review skill**: `.agents/skills/code-review/SKILL.md`, the same 7-area review checklist (intent, readability, tests, security, performance, style, docs) used in every repo, findings by severity.
+
 - **Unreleased · Smart assign (AI pilot)**: *Smart assign* panel in the task drawer suggests up to 3 assignees with reasons. Rules score availability (50) + workload (30) + past-task experience (20); with `ANTHROPIC_API_KEY` set, Claude re-ranks and explains the top 8 (pseudonymised: no names, emails or ids leave the server). Falls back to the rules on no key, timeout, refusal or rate limit. Never auto-assigns. Spec: `docs/features/smart-assign/feature.md`.
 
 - **v0.4.0 · Mobile-first for every module**: drawers and dialogs now sit above the phone top bar/tab bar (the Save button was hidden before); Tasks — list rows become cards, Kanban lanes swipe one per screen, Calendar becomes an agenda (with *Show earlier days*), filters fold into a *Filters · n* toggle; Users/Teams/Tasks primary action is a floating button above the tab bar; stat cards become a swipeable strip; confirm dialogs are bottom sheets; drawers are full-screen with safe-area footers; 16px inputs (no iOS zoom); shared `StatCard` replaces two duplicate card components.
