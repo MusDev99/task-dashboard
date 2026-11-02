@@ -19,6 +19,8 @@ interface Props {
   people: TeamPerson[];
   onClose: () => void;
   onSaved: (message: string) => void;
+  /** Leads editing a team they lead: only name, description and colour (planners/admins manage members and the lead). */
+  detailsOnly?: boolean;
 }
 
 type Step = 1 | 2;
@@ -27,7 +29,7 @@ const MAX_RESULTS = 8;
 
 const sub = (p: TeamPerson) => [p.employeeId, p.locationName].filter(Boolean).join(" · ") || p.email;
 
-export default function TeamDrawer({ mode, team, allTeams, people, onClose, onSaved }: Props) {
+export default function TeamDrawer({ mode, team, allTeams, people, onClose, onSaved, detailsOnly = false }: Props) {
   const initial: TeamInput = team
     ? { name: team.name, description: team.description, color: team.color, leadId: team.leadId ?? "", memberIds: team.memberIds }
     : { name: "", description: "", color: COLOR_PRESETS[allTeams.length % COLOR_PRESETS.length], leadId: "", memberIds: [] };
@@ -144,7 +146,9 @@ export default function TeamDrawer({ mode, team, allTeams, people, onClose, onSa
           <button type="button" className="icon-btn" aria-label="Close" onClick={requestClose}><CloseIcon /></button>
         </div>
 
-        <div className="stepper" role="tablist" aria-label="Steps">
+        {detailsOnly ? (
+          <p className="drawer-sub">You can change the details. Ask a planner to add members or change the lead.</p>
+        ) : <div className="stepper" role="tablist" aria-label="Steps">
           {([1, 2] as const).map((s) => (
             <button
               key={s} type="button" role="tab" id={`step-${s}`} aria-selected={step === s} aria-controls={`panel-${s}`}
@@ -156,7 +160,7 @@ export default function TeamDrawer({ mode, team, allTeams, people, onClose, onSa
               {stepHasError(s) && <span className="sr-only"> (has errors)</span>}
             </button>
           ))}
-        </div>
+        </div>}
 
         <form onSubmit={submit} noValidate style={{ display: "contents" }}>
           <div className="drawer-body">

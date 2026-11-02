@@ -27,8 +27,9 @@ interface Props {
   users: UserRow[];
   sort: Sort;
   onSort: (key: SortKey) => void;
-  onEdit: (u: UserRow) => void;
-  onDelete: (u: UserRow) => void;
+  /** Omitted when the viewer can't edit users: the row menu then only offers "View profile". */
+  onEdit?: (u: UserRow) => void;
+  onDelete?: (u: UserRow) => void;
 }
 
 export default function UserTable({ users, sort, onSort, onEdit, onDelete }: Props) {
@@ -65,7 +66,7 @@ export default function UserTable({ users, sort, onSort, onEdit, onDelete }: Pro
               <td>{u.roleName ?? <span style={{ color: "var(--text-muted)" }}>—</span>}</td>
               <td><span className={`status ${u.isActive ? "status-active" : "status-inactive"}`}>{u.isActive ? "Active" : "Inactive"}</span></td>
               <td style={{ color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{fmtDate(u.joinedDate)}</td>
-              <td><RowMenu user={u} onEdit={() => onEdit(u)} onDelete={() => onDelete(u)} /></td>
+              <td><RowMenu user={u} onEdit={onEdit && (() => onEdit(u))} onDelete={onDelete && (() => onDelete(u))} /></td>
             </tr>
           ))}
         </tbody>

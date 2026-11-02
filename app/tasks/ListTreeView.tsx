@@ -62,7 +62,7 @@ export default function ListTreeView({ tasks, subtasksOf, people, config, today,
         </td>
         <td className="task-status-cell">
           <label className="sr-only" htmlFor={`st-${t.id}`}>Status of {t.code}</label>
-          <select id={`st-${t.id}`} className="select select-sm" value={t.status} style={{ borderColor: config.statuses.find((s) => s.key === t.status)?.color }} onChange={(e) => actions.onStatus(t, e.target.value)}>
+          <select id={`st-${t.id}`} className="select select-sm" value={t.status} disabled={!actions.canStatus(t)} style={{ borderColor: config.statuses.find((s) => s.key === t.status)?.color }} onChange={(e) => actions.onStatus(t, e.target.value)}>
             {config.statuses.filter((s) => s.active || s.key === t.status).map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
           </select>
         </td>

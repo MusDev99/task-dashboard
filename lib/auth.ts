@@ -61,11 +61,28 @@ export async function actorWith(capability: Capability, action: string): Promise
   return can(actor.level, capability) ? { actor, denied: null } : { actor, denied: forbidden(action, actor) };
 }
 
+/**
+ * For pages: the viewer's actor, or null when it can't be determined (signed out, inactive, outage).
+ * Pages use it only to hide controls or show the no-access state; the server actions still enforce access.
+ */
+export async function viewer(): Promise<Actor | null> {
+  try {
+    return await requireActor();
+  } catch {
+    return null;
+  }
+}
+
+/** Whether the viewer has `capability` (no viewer = no). */
+export const viewerCan = (v: Actor | null, capability: Capability) => !!v && can(v.level, capability);
+
 export interface Profile {
   id: string;
   name: string;
   email: string;
   avatar: string | null;
+  /** null when the level couldn't be read (outage): the sidebar then shows only the routes everyone can open. */
+  access: AccessLevel | null;
 }
 
 /** Name + avatar for the sidebar. Falls back to the email if the data store can't be read (never blocks a page). */
@@ -74,9 +91,9 @@ export async function currentProfile(): Promise<Profile | null> {
   if (!who) return null;
   try {
     const u = (await readUsers()).find((x) => x.id === who.uid);
-    if (u) return { id: u.id, name: u.name, email: u.email, avatar: u.avatar };
+    if (u) return { id: u.id, name: u.name, email: u.email, avatar: u.avatar, access: u.isActive ? u.access : null };
   } catch (e) {
     console.error("currentProfile: could not read users", e);
   }
-  return { id: who.uid, name: who.email, email: who.email, avatar: null };
+  return { id: who.uid, name: who.email, email: who.email, avatar: null, access: null };
 }

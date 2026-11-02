@@ -59,7 +59,7 @@ export default function KanbanView({ tasks, subtasksOf, people, config, today, a
                   <article
                     key={t.id}
                     className={`kanban-card ${dragging === t.id ? "is-dragging" : ""}`}
-                    draggable
+                    draggable={actions.canStatus(t)}
                     onDragStart={(e) => { e.dataTransfer.setData("text/task-id", t.id); e.dataTransfer.effectAllowed = "move"; setDragging(t.id); }}
                     onDragEnd={() => { setDragging(null); setOver(null); }}
                   >
@@ -81,7 +81,7 @@ export default function KanbanView({ tasks, subtasksOf, people, config, today, a
                         <ul>
                           {subs.map((x) => (
                             <li key={x.id}>
-                              <button type="button" className={`check ${x.status === doneKey ? "is-done" : ""}`} aria-pressed={x.status === doneKey} aria-label={`Mark ${x.code} ${x.status === doneKey ? "not done" : "done"}`} onClick={() => actions.onToggleDone(x)} />
+                              <button type="button" className={`check ${x.status === doneKey ? "is-done" : ""}`} aria-pressed={x.status === doneKey} aria-label={`Mark ${x.code} ${x.status === doneKey ? "not done" : "done"}`} disabled={!actions.canStatus(x)} onClick={() => actions.onToggleDone(x)} />
                               <button type="button" className="kanban-sub-title" onClick={() => actions.onOpen(x.id)}>
                                 <span className={x.status === doneKey ? "is-struck" : ""}>{x.title}</span>
                               </button>

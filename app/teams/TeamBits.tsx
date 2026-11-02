@@ -31,13 +31,15 @@ export function AvatarStack({ people, max = 5 }: { people: TeamPerson[]; max?: n
   );
 }
 
-export function TeamMenu({ team, onEdit, onDelete }: { team: TeamRow; onEdit: () => void; onDelete: () => void }) {
+/** Row actions; an omitted handler means the viewer can't do it (no menu at all when neither is allowed). */
+export function TeamMenu({ team, onEdit, onDelete }: { team: TeamRow; onEdit?: () => void; onDelete?: () => void }) {
+  if (!onEdit && !onDelete) return null;
   return (
     <ActionMenu
       label={`Actions for ${team.name}`}
       items={[
-        { label: "Edit", icon: <EditIcon size={16} />, onSelect: onEdit },
-        { label: "Delete…", icon: <TrashIcon size={16} />, onSelect: onDelete, danger: true, separatorBefore: true },
+        ...(onEdit ? [{ label: "Edit", icon: <EditIcon size={16} />, onSelect: onEdit }] : []),
+        ...(onDelete ? [{ label: "Delete…", icon: <TrashIcon size={16} />, onSelect: onDelete, danger: true, separatorBefore: !!onEdit }] : []),
       ]}
     />
   );

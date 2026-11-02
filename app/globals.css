@@ -476,6 +476,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .alert { display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-md); margin-bottom: 1rem; font-size: 0.875rem; }
 .alert-warning { background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning); }
 .alert-danger { background: var(--danger-bg); border: 1px solid rgba(255, 107, 107, 0.35); color: #ffb0b0; }
+.alert-info { background: var(--bg-card); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
+/* A <fieldset> used only to disable a group of fields (view-only forms); no box of its own. */
+.fieldset-plain { border: 0; padding: 0; margin: 0; min-width: 0; display: contents; }
 
 /* Overlay, drawer, modal */
 .overlay { position: fixed; inset: 0; z-index: 90; background: rgba(5, 6, 12, 0.65); backdrop-filter: blur(2px); animation: fade 150ms ease-out; }

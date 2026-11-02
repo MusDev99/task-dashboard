@@ -4,6 +4,8 @@ import { getAppSettings, getLocations, getRoles, DEFAULT_APP_SETTINGS } from "..
 import { getUsageCounts } from "../../lib/settings-actions";
 import type { EntityKind, SettingRecord } from "../../lib/settings-validation";
 import SettingsClient from "./SettingsClient";
+import NoAccess from "../components/NoAccess";
+import { viewer, viewerCan } from "../../lib/auth";
 
 // Settings are read fresh on every request.
 export const dynamic = "force-dynamic";
@@ -11,6 +13,9 @@ export const dynamic = "force-dynamic";
 const empty: Record<EntityKind, Record<string, number>> = { shift: {}, leave: {}, location: {}, role: {}, status: {}, point: {} };
 
 export default async function SettingsPage() {
+  const me = await viewer();
+  if (!viewerCan(me, "settings.view")) return <NoAccess what="Settings" />;
+  const readOnly = !viewerCan(me, "settings.edit");
   try {
     const [shifts, tasks, locations, roles, general, usage] = await Promise.all([
       getShiftConfig(), getTaskConfig(), getLocations(), getRoles(), getAppSettings(), getUsageCounts(),
@@ -24,10 +29,10 @@ export default async function SettingsPage() {
       status: tasks.statuses.map((s) => ({ ...s })),
       point: tasks.storyPoints.map((p) => ({ ...p })),
     };
-    return <SettingsClient general={general} records={records} usage={usage} loadError={false} />;
+    return <SettingsClient general={general} records={records} usage={usage} loadError={false} readOnly={readOnly} />;
   } catch (e) {
     console.error("Error loading settings:", e);
     const records = { shift: [], leave: [], location: [], role: [], status: [], point: [] };
-    return <SettingsClient general={DEFAULT_APP_SETTINGS} records={records} usage={empty} loadError />;
+    return <SettingsClient general={DEFAULT_APP_SETTINGS} records={records} usage={empty} loadError readOnly={readOnly} />;
   }
 }

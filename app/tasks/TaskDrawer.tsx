@@ -29,6 +29,8 @@ interface Props {
   onNavigate: (target: DrawerTarget) => void;
   onDelete: (task: WorkTask) => void;
   onToggleDone: (task: WorkTask) => void;
+  /** View only (members): every field disabled, no save/delete. Status changes go through the board/list instead. */
+  readOnly?: boolean;
 }
 
 const toInput = (t: WorkTask): TaskInput => ({
@@ -36,7 +38,7 @@ const toInput = (t: WorkTask): TaskInput => ({
   assigneeId: t.assigneeId, labels: t.labels, links: t.links, startDate: t.startDate, dueDate: t.dueDate,
 });
 
-export default function TaskDrawer({ target, tasks, people, teams, config, onClose, onSaved, onNavigate, onDelete, onToggleDone }: Props) {
+export default function TaskDrawer({ target, tasks, people, teams, config, onClose, onSaved, onNavigate, onDelete, onToggleDone, readOnly = false }: Props) {
   const task = target.mode === "edit" ? tasks.find((t) => t.id === target.id) : undefined;
   const parentId = target.mode === "create" ? target.parentId : task?.parentId ?? null;
   const parent = parentId ? tasks.find((t) => t.id === parentId) : undefined;
@@ -128,7 +130,7 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
               </button>
             )}
             <h2 id="task-drawer-title">
-              {task ? <><span className="code-tag">{task.code}</span> Edit {isSub ? "subtask" : "task"}</> : isSub ? "New subtask" : "Create task"}
+              {task ? <><span className="code-tag">{task.code}</span> {readOnly ? "" : "Edit "}{isSub ? "Subtask" : "Task"}</> : isSub ? "New subtask" : "Create task"}
             </h2>
           </div>
           <button type="button" className="icon-btn" aria-label="Close" onClick={() => guard(onClose)}><CloseIcon /></button>
@@ -138,6 +140,8 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
           <div className="drawer-body">
             {serverError && <div className="alert alert-danger" role="alert">{serverError}</div>}
             {errors.parentId && <div className="alert alert-danger" role="alert">{errors.parentId}</div>}
+            {readOnly && <div className="alert alert-info" role="status">View only. You can move tasks assigned to you from the board or list.</div>}
+            <fieldset className="fieldset-plain" disabled={readOnly}>
 
             <div className="field">
               <label htmlFor="f-title">Title<span className="req" aria-hidden="true"> *</span></label>
@@ -193,7 +197,7 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
               )}
             </div>
 
-            <SmartAssign form={form} taskId={task?.id ?? null} people={people} teams={teams} value={form.assigneeId} onPick={(id) => set("assigneeId", id)} />
+            {!readOnly && <SmartAssign form={form} taskId={task?.id ?? null} people={people} teams={teams} value={form.assigneeId} onPick={(id) => set("assigneeId", id)} />}
 
             <div className="field">
               <label htmlFor="f-labels">Labels</label>
@@ -240,9 +244,13 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
                 )}
               </section>
             )}
+            </fieldset>
           </div>
 
           <div className="drawer-foot">
+            {readOnly ? (
+              <button type="button" className="btn" onClick={onClose}>Close</button>
+            ) : <>
             {task && (
               <button type="button" className="btn btn-danger" style={{ marginRight: "auto" }} onClick={() => onDelete(task)} disabled={pending}>
                 <TrashIcon size={15} /> Delete
@@ -250,6 +258,7 @@ export default function TaskDrawer({ target, tasks, people, teams, config, onClo
             )}
             <button type="button" className="btn" onClick={() => guard(onClose)} disabled={pending}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={pending}>{pending ? "Saving…" : task ? "Save changes" : isSub ? "Add subtask" : "Create task"}</button>
+            </>}
           </div>
         </form>
       </div>

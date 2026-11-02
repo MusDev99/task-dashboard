@@ -27,7 +27,7 @@ const SORTERS: Record<SortKey, (a: UserRow, b: UserRow) => number> = {
 const oneOf = <T extends string>(v: string | null, options: readonly T[], fallback: T): T =>
   options.includes(v as T) ? (v as T) : fallback;
 
-export default function UsersClient({ users, options, loadError }: { users: UserRow[]; options: UserOptions; loadError: boolean }) {
+export default function UsersClient({ users, options, loadError, canEdit }: { users: UserRow[]; options: UserOptions; loadError: boolean; canEdit: boolean }) {
   // Filter/sort/page state lives in the URL (shareable, back-button safe) but is
   // updated with history.replaceState so changing it never triggers a server round-trip.
   const params = useSearchParams();
@@ -137,7 +137,7 @@ export default function UsersClient({ users, options, loadError }: { users: User
     });
   };
 
-  const actions = { onEdit: (u: UserRow) => setDrawer({ mode: "edit", user: u }), onDelete: (u: UserRow) => setDeleting(u) };
+  const actions = canEdit ? { onEdit: (u: UserRow) => setDrawer({ mode: "edit", user: u }), onDelete: (u: UserRow) => setDeleting(u) } : {};
 
   return (
     <div className="page">
@@ -146,9 +146,11 @@ export default function UsersClient({ users, options, loadError }: { users: User
           <h1 className="page-title">Users</h1>
           <p className="page-subtitle">Manage people, their access status, location and role.</p>
         </div>
-        <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
-          <PlusIcon size={16} /> Add user
-        </button>
+        {canEdit && (
+          <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
+            <PlusIcon size={16} /> Add user
+          </button>
+        )}
       </div>
 
       {loadError && (
@@ -189,8 +191,8 @@ export default function UsersClient({ users, options, loadError }: { users: User
             {users.length === 0 ? (
               <>
                 <h3>No users yet</h3>
-                <p>Add your first user to get started.</p>
-                <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}><PlusIcon size={16} /> Add user</button>
+                <p>{canEdit ? "Add your first user to get started." : "No one has been added yet."}</p>
+                {canEdit && <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}><PlusIcon size={16} /> Add user</button>}
               </>
             ) : (
               <>

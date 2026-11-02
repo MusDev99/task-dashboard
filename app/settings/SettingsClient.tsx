@@ -18,12 +18,14 @@ interface Props {
   records: Record<EntityKind, SettingRecord[]>;
   usage: Record<EntityKind, Record<string, number>>;
   loadError: boolean;
+  /** Planners see settings but can't change them (the server refuses too). */
+  readOnly: boolean;
 }
 
 const usageNoun = (kind: EntityKind) => (n: number) =>
   kind === "shift" || kind === "leave" ? `${n} roster day${n === 1 ? "" : "s"}` : kind === "location" || kind === "role" ? (n === 1 ? "1 person" : `${n} people`) : `${n} task${n === 1 ? "" : "s"}`;
 
-export default function SettingsClient({ general, records, usage, loadError }: Props) {
+export default function SettingsClient({ general, records, usage, loadError, readOnly }: Props) {
   const params = useSearchParams();
   const initial = params.get("tab");
   const [section, setSection] = useState<Section>(SECTION_ORDER.includes(initial as Section) ? (initial as Section) : "general");
@@ -44,6 +46,8 @@ export default function SettingsClient({ general, records, usage, loadError }: P
         </div>
       </div>
 
+      {readOnly && <div className="alert alert-info" role="status">View only. Only admins can change settings.</div>}
+
       {loadError && <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load settings. Showing defaults. Please refresh; if it keeps happening, contact an administrator.</div>}
 
       <div className="settings-layout">
@@ -57,7 +61,7 @@ export default function SettingsClient({ general, records, usage, loadError }: P
         </nav>
         <div className="settings-main">
           {section === "general" ? (
-            <GeneralForm settings={general} notify={notify} />
+            <GeneralForm settings={general} notify={notify} readOnly={readOnly} />
           ) : (
             <EntitySection
               key={section}
@@ -67,6 +71,7 @@ export default function SettingsClient({ general, records, usage, loadError }: P
               usage={usage[section]}
               usageNoun={usageNoun(section)}
               notify={notify}
+              readOnly={readOnly}
             />
           )}
         </div>

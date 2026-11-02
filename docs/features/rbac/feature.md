@@ -24,9 +24,9 @@
 | Phase | Task | Effort | Risk | Status |
 |---|---|---|---|---|
 | 1 | `lib/access.ts` matrix + `requireActor`/`actorWith` on all 18 write actions, `users.access` column + migration, Access level in the Users drawer, last-admin rule | M | Med (lock-out) | ✅ code · ⬜ browser |
-| 2 | Hide controls per level, nav filtering, "no access" page for `/users` and `/settings`, Settings read-only for planners | M | Low | ⬜ |
+| 2 | Hide controls per level, nav filtering, "no access" page for `/users` and `/settings`, Settings read-only for planners | M | Low | ✅ code (`feat/rbac-ui`) · ⬜ browser |
 | 3 | Roster: grey out / lock rows a lead can't edit; default team filter to their teams | S | Low | ⬜ |
-| 4 | Member "my tasks" status changes in the UI (server already allows it) | S | Low | ⬜ |
+| 4 | Member "my tasks" status changes in the UI (server already allows it) | S | Low | ✅ (in part 2: status select / drag / menu only on own tasks) |
 
 ## 3. 🔬 Feature analysis
 ### 3.1 Acceptance criteria (slice 1)
@@ -79,6 +79,18 @@ The new select uses `--touch` height inside the existing full-screen drawer. No 
 - Location-scoped access.
 - Custom roles.
 - Audit trail.
+
+### 3.7 Part 2: what each level sees
+| Screen | Admin | Planner | Lead | Member |
+|---|---|---|---|---|
+| Sidebar | all | all | no Settings | no Users, no Settings |
+| Users | full | view only (no Add, no Edit/Delete) | view only | *no access* page |
+| Settings | full | view only (info banner, fields disabled, no menus) | *no access* | *no access* |
+| Teams | full | full | Edit (details only) on teams they lead | view only |
+| Tasks | full | full | full | no Create; drawer view-only; status menu / drag / select only on own tasks |
+| Roster | full | full | cells (server limits to their teams), no Clear/Upload | view only, Export only |
+
+Laws of UX: **Hick** (members see fewer menu items and choices), **Jakob** (familiar view-only banner), **Aesthetic-Usability** (controls are hidden rather than disabled everywhere; one info line explains why).
 
 ## 4. 🔨 Implementation checklist
 - [x] Smallest diff: guards added in place; the drawer reuses existing field patterns

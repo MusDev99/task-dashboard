@@ -26,7 +26,8 @@ interface Props {
   onPointerEnter: (userId: string, day: number) => void;
   onKeyDown: (e: React.KeyboardEvent, row: number, day: number) => void;
   onFocusCell: (row: number, day: number) => void;
-  onHeaderAssign: (day: number, el: HTMLElement) => void;
+  /** Omitted when the viewer can't edit the roster (no "+" buttons). */
+  onHeaderAssign?: (day: number, el: HTMLElement) => void;
   onSelectResource: (userId: string) => void;
 }
 
@@ -108,7 +109,7 @@ function RosterGrid(p: Props) {
               <th scope="col" className="roster-resource-head" rowSpan={2}>Resource</th>
               {days.map(({ d, date }) => (
                 <th key={d} scope="col" className="roster-plus">
-                  <button type="button" className="roster-plus-btn" aria-label={`Assign ${date} for all shown resources`} onClick={(e) => p.onHeaderAssign(d, e.currentTarget)}>+</button>
+                  {p.onHeaderAssign && <button type="button" className="roster-plus-btn" aria-label={`Assign ${date} for all shown resources`} onClick={(e) => p.onHeaderAssign?.(d, e.currentTarget)}>+</button>}
                   {phDays.has(d) && <span className="ph-badge" title="Public holiday">PH</span>}
                 </th>
               ))}
