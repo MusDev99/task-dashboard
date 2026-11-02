@@ -5,7 +5,7 @@ import { saveGeneral } from "../../lib/settings-actions";
 import { validTimezone, validateGeneral, type SettingErrors } from "../../lib/settings-validation";
 import type { AppSettings } from "../../lib/settings";
 
-export default function GeneralForm({ settings, notify }: { settings: AppSettings; notify: (k: "success" | "error", t: string) => void }) {
+export default function GeneralForm({ settings, notify, readOnly = false }: { settings: AppSettings; notify: (k: "success" | "error", t: string) => void; readOnly?: boolean }) {
   const initial = { timezone: settings.timezone, codePrefix: settings.codePrefix, weekStart: String(settings.weekStart), maxLabels: String(settings.maxLabels), maxLinks: String(settings.maxLinks) };
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<SettingErrors>({});
@@ -54,6 +54,7 @@ export default function GeneralForm({ settings, notify }: { settings: AppSetting
         </div>
       </div>
       <form className="table-card settings-form" onSubmit={submit} noValidate>
+        <fieldset className="fieldset-plain" disabled={readOnly}>
         <div className="field">
           <label htmlFor="g-timezone">Time zone<span className="req" aria-hidden="true"> *</span></label>
           <input id="g-timezone" className="input" list="tz-list" value={form.timezone} aria-invalid={!!errors.timezone || undefined} onChange={(e) => set("timezone", e.target.value)} />
@@ -87,10 +88,11 @@ export default function GeneralForm({ settings, notify }: { settings: AppSetting
             {err("maxLinks")}
           </div>
         </div>
-        <div className="settings-form-foot">
+        </fieldset>
+        {!readOnly && <div className="settings-form-foot">
           <button type="button" className="btn" disabled={!dirty || pending} onClick={() => { setForm(initial); setErrors({}); }}>Reset</button>
           <button type="submit" className="btn btn-primary" disabled={!dirty || pending}>{pending ? "Saving…" : "Save changes"}</button>
-        </div>
+        </div>}
       </form>
     </section>
   );

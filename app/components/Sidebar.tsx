@@ -8,15 +8,17 @@ import Avatar from "./ui/Avatar";
 import { useFocusTrap } from "./ui/useFocusTrap";
 import { CloseIcon } from "./ui/Icons";
 import { displayName } from "../lib/ui";
+import { can, type AccessLevel, type Capability } from "../../lib/access";
 
 interface SidebarUser {
   id: string;
   name: string;
   email: string;
   avatar: string | null;
+  access: AccessLevel | null;
 }
 
-const navItems: { label: string; href: string; tab?: boolean; icon: React.ReactNode }[] = [
+const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; icon: React.ReactNode }[] = [
   {
     label: "Dashboard",
     tab: true,
@@ -57,6 +59,7 @@ const navItems: { label: string; href: string; tab?: boolean; icon: React.ReactN
   {
     label: "Users",
     tab: true,
+    cap: "users.view",
     href: "/users",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -83,6 +86,7 @@ const navItems: { label: string; href: string; tab?: boolean; icon: React.ReactN
   },
   {
     label: "Settings",
+    cap: "settings.view",
     href: "/settings",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -122,6 +126,8 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
 
   if (pathname.startsWith("/login")) return null; // signed-out screen has no navigation
 
+  // Hide routes the viewer can't open (UX only; pages and actions check again). No user = auth bypassed (dev).
+  const items = navItems.filter((i) => !i.cap || !user || (user.access !== null && can(user.access, i.cap)));
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`));
 
   return (
@@ -154,7 +160,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
         <nav className="sidebar-nav">
           <div className="sidebar-section">Menu</div>
           <ul>
-            {navItems.map((item) => {
+            {items.map((item) => {
               const active = isActive(item.href);
               return (
                 <li key={item.href}>
@@ -187,7 +193,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
       </aside>
 
       <nav className="bottom-nav" aria-label="Quick navigation">
-        {navItems.filter((i) => i.tab).map((item) => {
+        {items.filter((i) => i.tab).map((item) => {
           const active = isActive(item.href);
           return (
             <Link key={item.href} href={item.href} className={`bottom-nav-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>

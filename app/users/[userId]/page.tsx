@@ -3,6 +3,8 @@ import { getUserById } from "../../../lib/actions";
 import { getLocations, getRoles } from "../../../lib/settings";
 import Avatar from "../../components/ui/Avatar";
 import { displayName } from "../../lib/ui";
+import NoAccess from "../../components/NoAccess";
+import { viewer, viewerCan } from "../../../lib/auth";
 
 // Data is read fresh on every request.
 export const dynamic = "force-dynamic";
@@ -18,6 +20,7 @@ const fmtDate = (s: string) => {
 
 export default async function UserProfilePage({ params }: Props) {
   const { userId } = await params;
+  if (!viewerCan(await viewer(), "users.view")) return <NoAccess what="Users" />;
   const [user, locations, roles] = await Promise.all([getUserById(userId), getLocations(), getRoles()]);
 
   if (!user) {

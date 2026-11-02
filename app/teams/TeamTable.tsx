@@ -28,9 +28,11 @@ interface Props {
   onSort: (key: SortKey) => void;
   onEdit: (t: TeamRow) => void;
   onDelete: (t: TeamRow) => void;
+  canEdit: (t: TeamRow) => boolean;
+  canDelete: boolean;
 }
 
-export default function TeamTable({ teams, people, sort, onSort, onEdit, onDelete }: Props) {
+export default function TeamTable({ teams, people, sort, onSort, onEdit, onDelete, canEdit, canDelete }: Props) {
   return (
     <div className="table-scroll table-only">
       <table className="data-table">
@@ -69,7 +71,7 @@ export default function TeamTable({ teams, people, sort, onSort, onEdit, onDelet
                   ) : <span style={{ color: "var(--text-muted)" }}>—</span>}
                 </td>
                 <td style={{ color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{fmtDate(t.updatedAt)}</td>
-                <td><TeamMenu team={t} onEdit={() => onEdit(t)} onDelete={() => onDelete(t)} /></td>
+                <td><TeamMenu team={t} onEdit={canEdit(t) ? () => onEdit(t) : undefined} onDelete={canDelete ? () => onDelete(t) : undefined} /></td>
               </tr>
             );
           })}

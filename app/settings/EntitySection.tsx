@@ -16,9 +16,10 @@ interface Props {
   usage: Record<string, number>;
   usageNoun: (n: number) => string;
   notify: (kind: "success" | "error", text: string) => void;
+  readOnly?: boolean;
 }
 
-export default function EntitySection({ def, records, siblings, usage, usageNoun, notify }: Props) {
+export default function EntitySection({ def, records, siblings, usage, usageNoun, notify, readOnly = false }: Props) {
   const [drawer, setDrawer] = useState<{ record: SettingRecord | null } | null>(null);
   const [deleting, setDeleting] = useState<SettingRecord | null>(null);
   const [pending, start] = useTransition();
@@ -38,7 +39,7 @@ export default function EntitySection({ def, records, siblings, usage, usageNoun
           <h2 id={`sec-${def.kind}`}>{def.title}</h2>
           <p className="page-subtitle">{def.description}</p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setDrawer({ record: null })}><PlusIcon size={16} /> {def.addLabel}</button>
+        {!readOnly && <button type="button" className="btn btn-primary" onClick={() => setDrawer({ record: null })}><PlusIcon size={16} /> {def.addLabel}</button>}
       </div>
 
       <div className="table-card">
@@ -46,7 +47,7 @@ export default function EntitySection({ def, records, siblings, usage, usageNoun
           <div className="empty-state">
             <h3>Nothing here yet</h3>
             <p>{def.description}</p>
-            <button type="button" className="btn btn-primary" onClick={() => setDrawer({ record: null })}><PlusIcon size={16} /> {def.addLabel}</button>
+            {!readOnly && <button type="button" className="btn btn-primary" onClick={() => setDrawer({ record: null })}><PlusIcon size={16} /> {def.addLabel}</button>}
           </div>
         ) : (
           <div className="table-scroll">
@@ -56,7 +57,7 @@ export default function EntitySection({ def, records, siblings, usage, usageNoun
                   {def.columns.map((c) => <th key={c.label} scope="col" className={c.className}>{c.label}</th>)}
                   <th scope="col">In use</th>
                   <th scope="col">Status</th>
-                  <th scope="col" style={{ width: 52 }}><span className="sr-only">Actions</span></th>
+                  {!readOnly && <th scope="col" style={{ width: 52 }}><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody>
@@ -68,7 +69,7 @@ export default function EntitySection({ def, records, siblings, usage, usageNoun
                       {def.columns.map((c) => <td key={c.label} data-label={c.label} className={c.className}>{c.render(r)}</td>)}
                       <td data-label="In use" className={n ? undefined : "muted"}>{n ? usageNoun(n) : "Not used"}</td>
                       <td data-label="Status"><span className={`status ${active ? "status-active" : "status-inactive"}`}>{active ? "Active" : "Inactive"}</span></td>
-                      <td className="settings-actions">
+                      {!readOnly && <td className="settings-actions">
                         <ActionMenu
                           label={`Actions for ${def.name(r)}`}
                           items={[
@@ -79,7 +80,7 @@ export default function EntitySection({ def, records, siblings, usage, usageNoun
                             { label: "Delete…", icon: <TrashIcon size={16} />, danger: true, separatorBefore: true, onSelect: () => setDeleting(r) },
                           ]}
                         />
-                      </td>
+                      </td>}
                     </tr>
                   );
                 })}

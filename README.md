@@ -119,7 +119,7 @@ Every person has one access level (separate from their job **Role**). The server
 | Users and access levels | ✅ | — | — | — |
 | Settings | ✅ | view only | — | — |
 
-New people start as **Member**. There must always be one active Admin. A change of level applies to the person's next action. Run `npm run migrate:settings` once after upgrading (until then everyone keeps full access).
+Screens follow the level: links you can't use are hidden from the menu, Users and Settings show a *no access* page to people without access, Settings is view-only for Planners, Users is view-only for Planners and Leads, Leads edit only the details of teams they lead, and Members see the roster and tasks view-only (they can still move tasks assigned to them). New people start as **Member**. There must always be one active Admin. A change of level applies to the person's next action. Run `npm run migrate:settings` once after upgrading (until then everyone keeps full access).
 
 Run the project's security-review skill before releases and after adding a server action, form, URL field, import or dependency: ask Claude Code to *"run the appsec-review skill"*, or run the automated part directly with `bash .claude/skills/appsec-review/scan.sh`. Reports are kept in `docs/` (latest: `docs/security-review-2026-10-24.md`).
 
@@ -147,6 +147,7 @@ Keep **Settings → General → Automatically delete head branches** on as well;
 
 ## Changelog
 
+- **Unreleased · Access levels, part 2**: screens match each level: menu items hidden, *no access* page for Users/Settings, view-only Settings (Planners), Users (Planners, Leads), Roster and task drawer (Members); Leads edit only details of teams they lead; Clear/Upload roster only for Planners and Admins.
 - **Unreleased · Branch cleanup**: `branch-policy.yml` checks branch names and Conventional Commit PR titles; `branch-cleanup.yml` deletes a PR's branch after it is merged.
 
 - **Unreleased · Shared code-review skill**: `.agents/skills/code-review/SKILL.md`, the same 7-area review checklist (intent, readability, tests, security, performance, style, docs) used in every repo, findings by severity.

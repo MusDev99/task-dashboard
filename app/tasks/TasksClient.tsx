@@ -17,6 +17,7 @@ import KanbanView from "./KanbanView";
 import CalendarView from "./CalendarView";
 import TaskDrawer, { type DrawerTarget } from "./TaskDrawer";
 import type { TaskActions } from "./TaskMenu";
+import { can, canSetTaskStatus, type AccessLevel } from "../../lib/access";
 import type { Person, WorkTask } from "./types";
 import type { TeamOption } from "../teams/types";
 
@@ -30,11 +31,13 @@ interface Props {
   config: TaskConfig;
   today: string;
   loadError: boolean;
+  /** The viewer (null = unknown: view only). Hiding controls is UX; every action is checked on the server. */
+  me: { uid: string; level: AccessLevel } | null;
 }
 
 const oneOf = <T extends string>(v: string | null, options: readonly T[], fallback: T): T => (options.includes(v as T) ? (v as T) : fallback);
 
-export default function TasksClient({ tasks, people, teams, config, today, loadError }: Props) {
+export default function TasksClient({ tasks, people, teams, config, today, loadError, me }: Props) {
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
   const [, startTransition] = useTransition();
@@ -163,13 +166,16 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
 
   const doneKey = doneStatus(config);
   const todoKey = defaultStatus(config);
+  const canEdit = !!me && can(me.level, "tasks.edit");
   const actions: TaskActions = useMemo(() => ({
+    canEdit,
+    canStatus: (t: WorkTask) => !!me && canSetTaskStatus(me.level, me.uid, t.assigneeId),
     onOpen: (id) => setDrawer({ mode: "edit", id }),
     onAddSubtask: (parentId) => setDrawer({ mode: "create", parentId }),
     onStatus: changeStatus,
     onDelete: (t) => setDeleting(t),
     onToggleDone: (t) => changeStatus(t, t.status === doneKey ? todoKey : doneKey),
-  }), [changeStatus, doneKey, todoKey]);
+  }), [changeStatus, doneKey, todoKey, canEdit, me]);
 
   const confirmDelete = () => {
     if (!deleting) return;
@@ -204,9 +210,11 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
             <p className="page-subtitle">Plan, coordinate and assign operational tasks, checklists and timelines — based on who&apos;s available on the roster.</p>
           </div>
         </div>
-        <button type="button" className="btn btn-primary btn-lg fab" onClick={() => setDrawer({ mode: "create", parentId: null })}>
-          <PlusIcon size={16} /> Create Task
-        </button>
+        {canEdit && (
+          <button type="button" className="btn btn-primary btn-lg fab" onClick={() => setDrawer({ mode: "create", parentId: null })}>
+            <PlusIcon size={16} /> Create Task
+          </button>
+        )}
       </div>
 
       {loadError && <div className="alert alert-danger" role="alert"><AlertIcon /> Couldn&apos;t load tasks. Please refresh. If it keeps happening, contact an administrator.</div>}
@@ -258,8 +266,8 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
       {top.length === 0 ? (
         <div className="table-card"><div className="empty-state">
           <h3>No tasks yet</h3>
-          <p>Create the first task, estimate it and assign it to someone who&apos;s available.</p>
-          <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "create", parentId: null })}><PlusIcon size={16} /> Create Task</button>
+          <p>{canEdit ? <>Create the first task, estimate it and assign it to someone who&apos;s available.</> : "Tasks assigned to you will show here."}</p>
+          {canEdit && <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "create", parentId: null })}><PlusIcon size={16} /> Create Task</button>}
         </div></div>
       ) : filtered.length === 0 && view !== "kanban" ? (
         <div className="table-card"><div className="empty-state">
@@ -291,6 +299,7 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
           onNavigate={setDrawer}
           onDelete={(t) => setDeleting(t)}
           onToggleDone={actions.onToggleDone}
+          readOnly={!canEdit}
           onSaved={(message, task) => {
             notify("success", message);
             // After adding/editing a subtask, return to its parent; otherwise close.

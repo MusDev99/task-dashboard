@@ -14,13 +14,17 @@ import { SearchIcon, PlusIcon, TableIcon, GridIcon, UsersIcon, AlertIcon, UserCh
 import { displayName } from "../lib/ui";
 import type { TeamPerson, TeamRow } from "./types";
 import StatCard from "../components/ui/StatCard";
+import { can, canEditTeam, type AccessLevel } from "../../lib/access";
 
 type View = "table" | "grid";
 
 const oneOf = <T extends string>(v: string | null, options: readonly T[], fallback: T): T =>
   options.includes(v as T) ? (v as T) : fallback;
 
-export default function TeamsClient({ teams, people, loadError }: { teams: TeamRow[]; people: TeamPerson[]; loadError: boolean }) {
+/** The viewer's level and id (null = unknown: view only). Hiding controls is UX; the server checks every change. */
+export interface TeamViewer { uid: string; level: AccessLevel }
+
+export default function TeamsClient({ teams, people, loadError, me }: { teams: TeamRow[]; people: TeamPerson[]; loadError: boolean; me: TeamViewer | null }) {
   // Filter/sort/page state is mirrored to the URL with history.replaceState (shareable, no server round-trip).
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
@@ -111,7 +115,13 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
     });
   };
 
-  const actions = { onEdit: (t: TeamRow) => setDrawer({ mode: "edit", team: t }), onDelete: (t: TeamRow) => setDeleting(t) };
+  const manage = !!me && can(me.level, "teams.manage");
+  const actions = {
+    onEdit: (t: TeamRow) => setDrawer({ mode: "edit", team: t }),
+    onDelete: (t: TeamRow) => setDeleting(t),
+    canEdit: (t: TeamRow) => !!me && canEditTeam(me.level, me.uid, t),
+    canDelete: manage,
+  };
   const memberChoices = people.filter((p) => p.isActive || teams.some((t) => t.memberIds.includes(p.id)));
 
   return (
@@ -121,9 +131,11 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
           <h1 className="page-title">Teams</h1>
           <p className="page-subtitle">Group registered people into teams. A person can be in several teams.</p>
         </div>
-        <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
-          <PlusIcon size={16} /> New team
-        </button>
+        {manage && (
+          <button type="button" className="btn btn-primary fab" onClick={() => setDrawer({ mode: "add" })}>
+            <PlusIcon size={16} /> New team
+          </button>
+        )}
       </div>
 
       {loadError && (
@@ -163,8 +175,8 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
             {teams.length === 0 ? (
               <>
                 <h3>No teams yet</h3>
-                <p>Create a team and pick its members from the people registered in Users.</p>
-                <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}><PlusIcon size={16} /> New team</button>
+                <p>{manage ? "Create a team and pick its members from the people registered in Users." : "Planners and admins create teams."}</p>
+                {manage && <button type="button" className="btn btn-primary" onClick={() => setDrawer({ mode: "add" })}><PlusIcon size={16} /> New team</button>}
               </>
             ) : (
               <>
@@ -199,6 +211,7 @@ export default function TeamsClient({ teams, people, loadError }: { teams: TeamR
           people={people}
           onClose={() => setDrawer(null)}
           onSaved={(message) => { setDrawer(null); notify("success", message); }}
+          detailsOnly={!manage}
         />
       )}
 

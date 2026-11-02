@@ -17,22 +17,30 @@ interface Props {
   codes: Map<string, ShiftCode>;
   values: Map<string, string>; // `${userId}|${date}` -> code
   onDay: (day: number) => void;
-  onEdit: (userId: string, el: HTMLElement) => void;
-  onAssignAll: (el: HTMLElement) => void;
+  /** Omitted when the viewer can't edit the roster: rows are then plain, non-interactive. */
+  onEdit?: (userId: string, el: HTMLElement) => void;
+  onAssignAll?: (el: HTMLElement) => void;
 }
 
 const DayRow = memo(function DayRow({ r, code, def, onEdit }: { r: Resource; code: string; def?: ShiftCode; onEdit: Props["onEdit"] }) {
   const name = displayName(r.name);
+  const body = (
+    <>
+      <Avatar id={r.id} name={r.name} src={r.avatar} size="sm" />
+      <span className="day-row-text">
+        <b>{name}</b>
+        <small>{def?.start ? `${def.label} · ${def.start}–${def.end}` : def?.label ?? (code || "Not scheduled")}</small>
+      </span>
+      <span className="day-row-chip">{code ? <CodeChip def={def} code={code} /> : onEdit ? <span className="day-row-empty">Set</span> : null}</span>
+    </>
+  );
   return (
     <li>
-      <button type="button" className="day-row" onClick={(e) => onEdit(r.id, e.currentTarget)} aria-label={`${name}: ${code ? def?.label ?? code : "no entry"}. Change`}>
-        <Avatar id={r.id} name={r.name} src={r.avatar} size="sm" />
-        <span className="day-row-text">
-          <b>{name}</b>
-          <small>{def?.start ? `${def.label} · ${def.start}–${def.end}` : def?.label ?? (code || "Not scheduled")}</small>
-        </span>
-        <span className="day-row-chip">{code ? <CodeChip def={def} code={code} /> : <span className="day-row-empty">Set</span>}</span>
-      </button>
+      {onEdit ? (
+        <button type="button" className="day-row" onClick={(e) => onEdit(r.id, e.currentTarget)} aria-label={`${name}: ${code ? def?.label ?? code : "no entry"}. Change`}>{body}</button>
+      ) : (
+        <div className="day-row">{body}</div>
+      )}
     </li>
   );
 });
@@ -123,9 +131,11 @@ export default function DayView({ resources, days, day, codes, values, onDay, on
         })}
       </ul>
 
-      <button type="button" className="btn day-assign-all" onClick={(e) => onAssignAll(e.currentTarget)}>
-        Set {current.d} {current.mid} for all {resources.length} shown
-      </button>
+      {onAssignAll && (
+        <button type="button" className="btn day-assign-all" onClick={(e) => onAssignAll(e.currentTarget)}>
+          Set {current.d} {current.mid} for all {resources.length} shown
+        </button>
+      )}
     </div>
   );
 }

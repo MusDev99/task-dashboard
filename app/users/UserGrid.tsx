@@ -9,8 +9,9 @@ import type { UserRow } from "./types";
 interface Props {
   users: UserRow[];
   mobileOnly?: boolean;
-  onEdit: (u: UserRow) => void;
-  onDelete: (u: UserRow) => void;
+  /** Omitted when the viewer can't edit users: the row menu then only offers "View profile". */
+  onEdit?: (u: UserRow) => void;
+  onDelete?: (u: UserRow) => void;
 }
 
 export default function UserGrid({ users, mobileOnly, onEdit, onDelete }: Props) {
@@ -18,7 +19,7 @@ export default function UserGrid({ users, mobileOnly, onEdit, onDelete }: Props)
     <div className={`user-grid ${mobileOnly ? "grid-mobile-only" : ""}`} style={{ padding: mobileOnly ? "1rem" : 0 }}>
       {users.map((u) => (
         <div key={u.id} className="glass-card user-card">
-          <RowMenu user={u} onEdit={() => onEdit(u)} onDelete={() => onDelete(u)} />
+          <RowMenu user={u} onEdit={onEdit && (() => onEdit(u))} onDelete={onDelete && (() => onDelete(u))} />
           <Link href={`/users/${u.id}`} style={{ display: "flex", alignItems: "center", gap: 14, textDecoration: "none", color: "inherit", paddingRight: 40, minWidth: 0 }}>
             <Avatar id={u.id} name={u.name} src={u.avatar} size="lg" />
             <div style={{ minWidth: 0 }}>

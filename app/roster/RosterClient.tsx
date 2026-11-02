@@ -46,6 +46,10 @@ interface Props {
   today: string;
   teams: TeamOption[];
   loadError: boolean;
+  /** Edit cells (admins, planners, leads; leads are limited to their teams by the server). */
+  canEdit: boolean;
+  /** Clear schedule + CSV upload (admins, planners). */
+  canBulk: boolean;
 }
 
 interface PickerState {
@@ -55,7 +59,7 @@ interface PickerState {
   cells: CellRef[];
 }
 
-export default function RosterClient({ resources, entries, config, month, today, teams, loadError }: Props) {
+export default function RosterClient({ resources, entries, config, month, today, teams, loadError, canEdit, canBulk }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
@@ -166,11 +170,11 @@ export default function RosterClient({ resources, entries, config, month, today,
   }, [resources, month]);
 
   const onPointerDown = useCallback((userId: string, day: number, e: React.PointerEvent) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !canEdit) return;
     dragging.current = true;
     lastCell.current = e.currentTarget as HTMLElement;
     setSel({ userId, a: day, b: day });
-  }, []);
+  }, [canEdit]);
   const onPointerEnter = useCallback((userId: string, day: number) => {
     const s = selRef.current;
     if (!dragging.current || !s || s.userId !== userId) return;
@@ -203,6 +207,8 @@ export default function RosterClient({ resources, entries, config, month, today,
         setSel(null);
         focusCell(row + dr, day + dd);
       }
+    } else if (!canEdit) {
+      return; // view only: arrows move focus, nothing edits
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       if (!selRef.current || selRef.current.userId !== user.id) setSel({ userId: user.id, a: day, b: day });
@@ -214,7 +220,7 @@ export default function RosterClient({ resources, entries, config, month, today,
       setSel(null);
     } else if (e.key === "Escape") setSel(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, days, month]);
+  }, [shown, days, month, canEdit]);
 
   const onHeaderAssign = useCallback((d: number, el: HTMLElement) => {
     const date = dateOf(month, d);
@@ -375,17 +381,19 @@ export default function RosterClient({ resources, entries, config, month, today,
         </div>
         <Legend codes={activeCodes} />
         <div className="roster-actions-inline">
-          <button type="button" className="btn" onClick={() => setDialog("clear")}>Clear schedule</button>
+          {canBulk && <button type="button" className="btn" onClick={() => setDialog("clear")}>Clear schedule</button>}
           <button type="button" className="btn" onClick={exportCsv} disabled={shown.length === 0}>Export</button>
-          <button type="button" className="btn" onClick={() => setDialog("upload")}>Upload CSV</button>
+          {canBulk && <button type="button" className="btn" onClick={() => setDialog("upload")}>Upload CSV</button>}
         </div>
         <div className="roster-actions-menu">
           <ActionMenu
             label="More roster actions"
             items={[
               { label: "Export CSV", onSelect: exportCsv, disabled: shown.length === 0 },
-              { label: "Upload CSV", onSelect: () => setDialog("upload") },
-              { label: "Clear schedule", onSelect: () => setDialog("clear"), danger: true, separatorBefore: true },
+              ...(canBulk ? [
+                { label: "Upload CSV", onSelect: () => setDialog("upload") },
+                { label: "Clear schedule", onSelect: () => setDialog("clear"), danger: true, separatorBefore: true },
+              ] : []),
             ]}
           />
         </div>
@@ -393,7 +401,9 @@ export default function RosterClient({ resources, entries, config, month, today,
 
       {view !== "day" && summary}
 
-      {view === "grid" && <p className="page-subtitle roster-tip">
+      {!canEdit && <div className="alert alert-info" role="status">View only. Planners and team leads change the roster.</div>}
+
+      {view === "grid" && canEdit && <p className="page-subtitle roster-tip">
         <b>Tip:</b> click a name to load their stats · click or drag cells on one row to assign a range · use <b>+</b> above a date to assign it for everyone shown · arrow keys + Enter work too.
       </p>}
 
@@ -407,7 +417,7 @@ export default function RosterClient({ resources, entries, config, month, today,
           <div className="shimmer skeleton" style={{ height: 380, borderRadius: 16 }} aria-busy="true" aria-label="Loading roster" />
         ) : view === "day" ? (
           <>
-            <DayView resources={shown} days={dayList} day={day} codes={codes} values={values} onDay={setDay} onEdit={onEditDay} onAssignAll={onAssignAllDay} />
+            <DayView resources={shown} days={dayList} day={day} codes={codes} values={values} onDay={setDay} onEdit={canEdit ? onEditDay : undefined} onAssignAll={canEdit ? onAssignAllDay : undefined} />
             <div style={{ marginTop: "1rem" }}>{summary}</div>
           </>
         ) : (
@@ -415,7 +425,7 @@ export default function RosterClient({ resources, entries, config, month, today,
             resources={shown} month={month} today={today} codes={codes} values={values}
             selection={selection} focus={focus} focusedUser={focusedUser}
             onPointerDown={onPointerDown} onPointerEnter={onPointerEnter} onKeyDown={onKeyDown}
-            onFocusCell={onFocusCell} onHeaderAssign={onHeaderAssign} onSelectResource={onSelectResource}
+            onFocusCell={onFocusCell} onHeaderAssign={canEdit ? onHeaderAssign : undefined} onSelectResource={onSelectResource}
           />
         )}
       </div>

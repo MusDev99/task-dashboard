@@ -15,6 +15,9 @@ interface Props {
   mobileOnly?: boolean;
   onEdit: (t: TeamRow) => void;
   onDelete: (t: TeamRow) => void;
+  /** Per-team permissions (UX only; the server checks again). */
+  canEdit: (t: TeamRow) => boolean;
+  canDelete: boolean;
 }
 
 function Person({ p, lead }: { p: TeamPerson; lead?: boolean }) {
@@ -29,7 +32,7 @@ function Person({ p, lead }: { p: TeamPerson; lead?: boolean }) {
   );
 }
 
-function TeamCard({ team, people, onEdit, onDelete }: { team: TeamRow; people: Map<string, TeamPerson>; onEdit: () => void; onDelete: () => void }) {
+function TeamCard({ team, people, onEdit, onDelete }: { team: TeamRow; people: Map<string, TeamPerson>; onEdit?: () => void; onDelete?: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const lead = team.leadId ? people.get(team.leadId) : undefined;
   const members = team.memberIds
@@ -50,10 +53,12 @@ function TeamCard({ team, people, onEdit, onDelete }: { team: TeamRow; people: M
           {team.description && <p>{team.description}</p>}
           <span className="team-card-count"><span className="team-dot" aria-hidden="true" />{total} member{total === 1 ? "" : "s"}</span>
         </div>
-        <div className="team-card-actions">
-          <button type="button" className="icon-btn" aria-label={`Edit ${team.name}`} title="Edit" onClick={onEdit}><EditIcon size={17} /></button>
-          <button type="button" className="icon-btn icon-btn-danger" aria-label={`Delete ${team.name}`} title="Delete" onClick={onDelete}><TrashIcon size={17} /></button>
-        </div>
+        {(onEdit || onDelete) && (
+          <div className="team-card-actions">
+            {onEdit && <button type="button" className="icon-btn" aria-label={`Edit ${team.name}`} title="Edit" onClick={onEdit}><EditIcon size={17} /></button>}
+            {onDelete && <button type="button" className="icon-btn icon-btn-danger" aria-label={`Delete ${team.name}`} title="Delete" onClick={onDelete}><TrashIcon size={17} /></button>}
+          </div>
+        )}
       </header>
 
       <section className="team-card-section team-card-lead" aria-label="Team lead">
@@ -80,10 +85,12 @@ function TeamCard({ team, people, onEdit, onDelete }: { team: TeamRow; people: M
   );
 }
 
-export default function TeamGrid({ teams, people, mobileOnly, onEdit, onDelete }: Props) {
+export default function TeamGrid({ teams, people, mobileOnly, onEdit, onDelete, canEdit, canDelete }: Props) {
   return (
     <div className={`team-grid ${mobileOnly ? "grid-mobile-only" : ""}`}>
-      {teams.map((t) => <TeamCard key={t.id} team={t} people={people} onEdit={() => onEdit(t)} onDelete={() => onDelete(t)} />)}
+      {teams.map((t) => (
+        <TeamCard key={t.id} team={t} people={people} onEdit={canEdit(t) ? () => onEdit(t) : undefined} onDelete={canDelete ? () => onDelete(t) : undefined} />
+      ))}
     </div>
   );
 }
