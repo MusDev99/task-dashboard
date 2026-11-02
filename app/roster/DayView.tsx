@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useMemo, useRef } from "react";
 import Avatar from "../components/ui/Avatar";
+import { LockIcon } from "../components/ui/Icons";
 import CodeChip from "./CodeChip";
 import { ChevronLeft, ChevronRight } from "../components/ui/Icons";
 import { displayName } from "../lib/ui";
@@ -20,9 +21,11 @@ interface Props {
   /** Omitted when the viewer can't edit the roster: rows are then plain, non-interactive. */
   onEdit?: (userId: string, el: HTMLElement) => void;
   onAssignAll?: (el: HTMLElement) => void;
+  /** Leads: people they may edit; other rows are shown locked. null = all editable. */
+  editable?: Set<string> | null;
 }
 
-const DayRow = memo(function DayRow({ r, code, def, onEdit }: { r: Resource; code: string; def?: ShiftCode; onEdit: Props["onEdit"] }) {
+const DayRow = memo(function DayRow({ r, code, def, onEdit, locked = false }: { r: Resource; code: string; def?: ShiftCode; onEdit: Props["onEdit"]; locked?: boolean }) {
   const name = displayName(r.name);
   const body = (
     <>
@@ -30,6 +33,7 @@ const DayRow = memo(function DayRow({ r, code, def, onEdit }: { r: Resource; cod
       <span className="day-row-text">
         <b>{name}</b>
         <small>{def?.start ? `${def.label} · ${def.start}–${def.end}` : def?.label ?? (code || "Not scheduled")}</small>
+        {locked && <small className="row-lock"><LockIcon size={12} /> Not in your teams</small>}
       </span>
       <span className="day-row-chip">{code ? <CodeChip def={def} code={code} /> : onEdit ? <span className="day-row-empty">Set</span> : null}</span>
     </>
@@ -49,7 +53,7 @@ const DayRow = memo(function DayRow({ r, code, def, onEdit }: { r: Resource; cod
  * Mobile-first roster: one day at a time. A swipeable day strip on top (thumb-reachable), every
  * shown person as a full-width 56px row below; tap a row to open the bottom-sheet picker.
  */
-export default function DayView({ resources, days, day, codes, values, onDay, onEdit, onAssignAll }: Props) {
+export default function DayView({ resources, days, day, codes, values, onDay, onEdit, onAssignAll, editable = null }: Props) {
   const strip = useRef<HTMLDivElement>(null);
   const current = days[day - 1] ?? days[0];
 
@@ -127,7 +131,8 @@ export default function DayView({ resources, days, day, codes, values, onDay, on
       <ul className="day-list" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {resources.map((r) => {
           const code = values.get(`${r.id}|${current.date}`) ?? "";
-          return <DayRow key={r.id} r={r} code={code} def={codes.get(code)} onEdit={onEdit} />;
+          const locked = !!editable && !editable.has(r.id);
+          return <DayRow key={r.id} r={r} code={code} def={codes.get(code)} onEdit={locked ? undefined : onEdit} locked={locked} />;
         })}
       </ul>
 

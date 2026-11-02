@@ -25,7 +25,7 @@
 |---|---|---|---|---|
 | 1 | `lib/access.ts` matrix + `requireActor`/`actorWith` on all 18 write actions, `users.access` column + migration, Access level in the Users drawer, last-admin rule | M | Med (lock-out) | ✅ code · ⬜ browser |
 | 2 | Hide controls per level, nav filtering, "no access" page for `/users` and `/settings`, Settings read-only for planners | M | Low | ✅ code (`feat/rbac-ui`) · ⬜ browser |
-| 3 | Roster: grey out / lock rows a lead can't edit; default team filter to their teams | S | Low | ⬜ |
+| 3 | Roster: grey out / lock rows a lead can't edit; default team filter to their teams | S | Low | ✅ code (`feat/rbac-roster-scope`) · ⬜ browser |
 | 4 | Member "my tasks" status changes in the UI (server already allows it) | S | Low | ✅ (in part 2: status select / drag / menu only on own tasks) |
 
 ## 3. 🔬 Feature analysis

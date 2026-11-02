@@ -1,5 +1,6 @@
 import { loadUsers, getRoster, loadTeams } from "../../lib/actions";
 import { toTeamOptions } from "../../lib/teams";
+import { ledUserIds, rosterScoped } from "../../lib/access";
 import { getShiftConfig } from "../../lib/shifts";
 import { MONTH_RE, todayIn } from "../../lib/roster-dates";
 import { toResources } from "../../lib/whereabouts";
@@ -19,5 +20,6 @@ export default async function RosterPage({ searchParams }: { searchParams: Promi
   const [{ users, error: usersError }, roster, locations, teamData, me] = await Promise.all([loadUsers(), getRoster(month), getLocations(), loadTeams(), viewer()]);
   const resources = toResources(users, locations);
 
-  return <RosterClient resources={resources} entries={roster.entries} config={config} month={month} today={today} teams={toTeamOptions(teamData.teams, teamData.members)} loadError={roster.error || usersError || teamData.error} canEdit={viewerCan(me, "roster.edit")} canBulk={viewerCan(me, "roster.bulk")} />;
+  return <RosterClient resources={resources} entries={roster.entries} config={config} month={month} today={today} teams={toTeamOptions(teamData.teams, teamData.members)} loadError={roster.error || usersError || teamData.error} canEdit={viewerCan(me, "roster.edit")}
+    editableIds={me && rosterScoped(me.level) ? [...ledUserIds(me.uid, teamData.teams, teamData.members)] : null} canBulk={viewerCan(me, "roster.bulk")} />;
 }

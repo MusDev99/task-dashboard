@@ -2,6 +2,7 @@
 
 import { memo, useMemo } from "react";
 import Avatar from "../components/ui/Avatar";
+import { LockIcon } from "../components/ui/Icons";
 import CodeChip from "./CodeChip";
 import { displayName } from "../lib/ui";
 import { monthDays, type MonthDay } from "./days";
@@ -29,6 +30,8 @@ interface Props {
   /** Omitted when the viewer can't edit the roster (no "+" buttons). */
   onHeaderAssign?: (day: number, el: HTMLElement) => void;
   onSelectResource: (userId: string) => void;
+  /** Leads: people whose rows they may edit (others are shown locked). null = all rows editable. */
+  editable?: Set<string> | null;
 }
 
 interface RowProps {
@@ -47,19 +50,22 @@ interface RowProps {
   onKeyDown: Props["onKeyDown"];
   onFocusCell: Props["onFocusCell"];
   onSelectResource: Props["onSelectResource"];
+  /** Row is outside the lead's teams: shown with a lock, cells don't edit. */
+  locked: boolean;
 }
 
 const RosterRow = memo(function RosterRow(p: RowProps) {
   const name = displayName(p.r.name);
   const rowCodes = p.rowCodes.split(SEP);
   return (
-    <tr>
+    <tr className={p.locked ? "is-locked" : undefined}>
       <th scope="row" className={`roster-resource ${p.focused ? "is-focused" : ""}`}>
         <button type="button" className="roster-resource-btn" aria-pressed={p.focused} onClick={() => p.onSelectResource(p.r.id)} title="Show this resource's stats">
           <Avatar id={p.r.id} name={p.r.name} src={p.r.avatar} size="sm" />
           <span className="roster-resource-text">
             <b>{name}</b>
             <small>{p.r.employeeId ?? p.r.email}{p.r.locationName ? ` · ${p.r.locationName}` : ""}</small>
+            {p.locked && <small className="row-lock"><LockIcon size={12} /> Not in your teams</small>}
           </span>
         </button>
       </th>
@@ -77,7 +83,7 @@ const RosterRow = memo(function RosterRow(p: RowProps) {
               type="button"
               data-cell={`${p.row}-${d}`}
               tabIndex={p.focusDay === d ? 0 : -1}
-              aria-label={`${name}, ${longLabel}: ${code ? p.codes.get(code)?.label ?? code : "no entry"}`}
+              aria-label={`${name}, ${longLabel}: ${code ? p.codes.get(code)?.label ?? code : "no entry"}${p.locked ? " (view only)" : ""}`}
               onPointerDown={(e) => p.onPointerDown(p.r.id, d, e)}
               onPointerEnter={() => p.onPointerEnter(p.r.id, d)}
               onKeyDown={(e) => p.onKeyDown(e, p.row, d)}
@@ -145,6 +151,7 @@ function RosterGrid(p: Props) {
                   onKeyDown={p.onKeyDown}
                   onFocusCell={p.onFocusCell}
                   onSelectResource={p.onSelectResource}
+                  locked={!!p.editable && !p.editable.has(r.id)}
                 />
               );
             })}
