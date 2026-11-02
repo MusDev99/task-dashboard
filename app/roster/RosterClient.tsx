@@ -50,7 +50,11 @@ interface Props {
   canEdit: boolean;
   /** Clear schedule + CSV upload (admins, planners). */
   canBulk: boolean;
+  /** Leads: the people in teams they lead (only their rows are editable). null = no row limit. */
+  editableIds: string[] | null;
 }
+
+const MINE = "mine"; // team filter value: every team the lead leads
 
 interface PickerState {
   anchor: DOMRect;
@@ -59,7 +63,7 @@ interface PickerState {
   cells: CellRef[];
 }
 
-export default function RosterClient({ resources, entries, config, month, today, teams, loadError, canEdit, canBulk }: Props) {
+export default function RosterClient({ resources, entries, config, month, today, teams, loadError, canEdit, canBulk, editableIds }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
@@ -100,14 +104,24 @@ export default function RosterClient({ resources, entries, config, month, today,
   // Filters
   const [picked, setPicked] = useState<Set<string>>(() => new Set(resources.map((r) => r.id)));
   const [location, setLocation] = useState("");
-  const [team, setTeam] = useState(() => (teams.some((t) => t.id === params.get("team")) ? params.get("team")! : ""));
+  // Leads start on "My teams" (everyone they can edit); the server enforces the same limit on every save.
+  const editable = useMemo(() => (editableIds ? new Set(editableIds) : null), [editableIds]);
+  const canEditUser = useCallback((id: string) => canEdit && (!editable || editable.has(id)), [canEdit, editable]);
+  const [team, setTeam] = useState(() => {
+    const q = params.get("team");
+    if (q && (teams.some((t) => t.id === q) || (q === MINE && editable))) return q;
+    return editable ? MINE : "";
+  });
   const [focusedUser, setFocusedUser] = useState<string | null>(null);
   const locations = useMemo(() => {
     const m = new Map<string, string>();
     for (const r of resources) if (r.locationId) m.set(r.locationId, r.locationName ?? r.locationId);
     return [...m].sort((a, b) => a[1].localeCompare(b[1]));
   }, [resources]);
-  const teamMembers = useMemo(() => (team ? new Set(teams.find((t) => t.id === team)?.memberIds ?? []) : null), [teams, team]);
+  const teamMembers = useMemo(
+    () => (team === MINE ? editable : team ? new Set(teams.find((t) => t.id === team)?.memberIds ?? []) : null),
+    [teams, team, editable]
+  );
   const shown = useMemo(
     () => resources.filter((r) => picked.has(r.id) && (!location || r.locationId === location) && (!teamMembers || teamMembers.has(r.id))),
     [resources, picked, location, teamMembers]
@@ -170,11 +184,11 @@ export default function RosterClient({ resources, entries, config, month, today,
   }, [resources, month]);
 
   const onPointerDown = useCallback((userId: string, day: number, e: React.PointerEvent) => {
-    if (e.button !== 0 || !canEdit) return;
+    if (e.button !== 0 || !canEditUser(userId)) return;
     dragging.current = true;
     lastCell.current = e.currentTarget as HTMLElement;
     setSel({ userId, a: day, b: day });
-  }, [canEdit]);
+  }, [canEditUser]);
   const onPointerEnter = useCallback((userId: string, day: number) => {
     const s = selRef.current;
     if (!dragging.current || !s || s.userId !== userId) return;
@@ -207,8 +221,8 @@ export default function RosterClient({ resources, entries, config, month, today,
         setSel(null);
         focusCell(row + dr, day + dd);
       }
-    } else if (!canEdit) {
-      return; // view only: arrows move focus, nothing edits
+    } else if (!canEditUser(user.id)) {
+      return; // view only (or a lead outside their teams): arrows move focus, nothing edits
     } else if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       if (!selRef.current || selRef.current.userId !== user.id) setSel({ userId: user.id, a: day, b: day });
@@ -220,18 +234,21 @@ export default function RosterClient({ resources, entries, config, month, today,
       setSel(null);
     } else if (e.key === "Escape") setSel(null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, days, month, canEdit]);
+  }, [shown, days, month, canEditUser]);
 
   const onHeaderAssign = useCallback((d: number, el: HTMLElement) => {
     const date = dateOf(month, d);
+    const targets = shown.filter((r) => canEditUser(r.id));
+    if (targets.length === 0) return;
+    const skipped = shown.length - targets.length;
     setSel(null);
     setPicker({
       anchor: el.getBoundingClientRect(),
       title: `${date} · all shown`,
-      subtitle: `Applies to ${shown.length} ${shown.length === 1 ? "resource" : "resources"}`,
-      cells: shown.map((r) => ({ userId: r.id, date })),
+      subtitle: `Applies to ${targets.length} ${targets.length === 1 ? "resource" : "resources"}${skipped ? ` (${skipped} outside your teams skipped)` : ""}`,
+      cells: targets.map((r) => ({ userId: r.id, date })),
     });
-  }, [month, shown]);
+  }, [month, shown, canEditUser]);
 
   const onFocusCell = useCallback((row: number, d: number) => setFocus({ row, day: d }), []);
   const onSelectResource = useCallback((id: string) => setFocusedUser((f) => (f === id ? null : id)), []);
@@ -239,11 +256,11 @@ export default function RosterClient({ resources, entries, config, month, today,
   // Day view: tap a person to edit that one cell; "set for all" reuses the header-assign flow.
   const onEditDay = useCallback((userId: string, el: HTMLElement) => {
     const user = resources.find((r) => r.id === userId);
-    if (!user) return;
+    if (!user || !canEditUser(userId)) return;
     const date = dateOf(month, day);
     setSel(null);
     setPicker({ anchor: el.getBoundingClientRect(), title: displayName(user.name), subtitle: date, cells: [{ userId, date }] });
-  }, [resources, month, day]);
+  }, [resources, month, day, canEditUser]);
   const onAssignAllDay = useCallback((el: HTMLElement) => onHeaderAssign(day, el), [onHeaderAssign, day]);
 
   // Mutations (optimistic)
@@ -365,6 +382,7 @@ export default function RosterClient({ resources, entries, config, month, today,
         </select>
         {teams.length > 0 && (
           <select className="select" aria-label="Filter by team" value={team} onChange={(e) => setTeam(e.target.value)}>
+            {editable && <option value={MINE}>My teams</option>}
             <option value="">All teams</option>
             {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
@@ -417,7 +435,7 @@ export default function RosterClient({ resources, entries, config, month, today,
           <div className="shimmer skeleton" style={{ height: 380, borderRadius: 16 }} aria-busy="true" aria-label="Loading roster" />
         ) : view === "day" ? (
           <>
-            <DayView resources={shown} days={dayList} day={day} codes={codes} values={values} onDay={setDay} onEdit={canEdit ? onEditDay : undefined} onAssignAll={canEdit ? onAssignAllDay : undefined} />
+            <DayView resources={shown} days={dayList} day={day} codes={codes} values={values} onDay={setDay} onEdit={canEdit ? onEditDay : undefined} editable={editable} onAssignAll={canEdit ? onAssignAllDay : undefined} />
             <div style={{ marginTop: "1rem" }}>{summary}</div>
           </>
         ) : (
@@ -426,6 +444,7 @@ export default function RosterClient({ resources, entries, config, month, today,
             selection={selection} focus={focus} focusedUser={focusedUser}
             onPointerDown={onPointerDown} onPointerEnter={onPointerEnter} onKeyDown={onKeyDown}
             onFocusCell={onFocusCell} onHeaderAssign={canEdit ? onHeaderAssign : undefined} onSelectResource={onSelectResource}
+            editable={editable}
           />
         )}
       </div>

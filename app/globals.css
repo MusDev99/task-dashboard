@@ -675,6 +675,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
   -webkit-tap-highlight-color: transparent;
 }
 .day-row:active { background: rgba(255, 255, 255, 0.04); }
+/* Rows a lead can't edit (outside the teams they lead): dimmed, with a text + lock label (never colour alone). */
+.row-lock { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text-muted); }
+.roster-grid tr.is-locked .roster-cell button { cursor: default; opacity: 0.55; }
+.day-row:not(button) .row-lock { margin-top: 0.1rem; }
 .day-row:focus-visible { box-shadow: inset var(--focus-ring); }
 @media (hover: hover) { .day-row:hover { background: rgba(255, 255, 255, 0.03); } }
 .day-row-text { flex: 1; min-width: 0; display: grid; }
