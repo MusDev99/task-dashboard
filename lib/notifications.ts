@@ -1,7 +1,7 @@
 // Notification rules (pure, no data access): who is told, how a row is shaped, what is unread, what can be pruned.
 // No runtime imports on purpose: tests run this file directly with `node --test`.
 
-export const NOTIFICATION_KINDS = ["leave_requested", "leave_decided", "task_assigned"] as const;
+export const NOTIFICATION_KINDS = ["leave_requested", "leave_decided", "leave_revoked", "task_assigned"] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
 export interface Notification {

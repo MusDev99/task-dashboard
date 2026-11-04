@@ -8,7 +8,7 @@ RICE = Reach (people/month) × Impact (0.5–3) × Confidence × ÷ Effort (pers
 | 1 | **Role-based access (access levels, team-scoped leads)** | 40 | 3 | 90% | 0.5 *(slice 1)* / 2 *(all)* | 216 / 54 | ✅ ready for dev | [rbac](briefs/rbac.md) |
 | 2 | My schedule (member home, 14 days, ICS) | 40 | 2 | 80% | 0.5 | 128 | 💡 blocked by #1 for member rollout | — |
 | 3 | Coverage targets + heat strip on Roster | 5 | 3 | 80% | 1.5 | 8 | ✅ targets + panel built (heat strip in the grid not done), awaiting browser pass | [coverage-rules](../features/coverage-rules/feature.md) |
-| 4 | Leave requests & approval | 40 | 3 | 80% | 3 | 32 | ✅ built + browser e2e (no revoke of approved leave, no notifications yet) | — |
+| 4 | Leave requests & approval | 40 | 3 | 80% | 3 | 32 | ✅ built + browser e2e; revoke of approved leave done ([leave-revoke](../features/leave-revoke/feature.md)) | — |
 | 5 | Shift patterns / rotation fill | 5 | 3 | 80% | 1.5 | 8 | 💡 | — |
 | 8 | **Notifications** (in-app inbox: leave, task assignment) | 40 | 2 | 90% | 0.5 | 72 | ✅ built + browser e2e (no email/push, no per-person mute) | [notifications](../features/notifications/feature.md) |
 | 6 | Rest-rule & fairness warnings | 5 | 2 | 80% | 1.5 | 5 | ✅ rest / days in a row / weekly hours built (fairness not done), awaiting browser pass | [coverage-rules](../features/coverage-rules/feature.md) |

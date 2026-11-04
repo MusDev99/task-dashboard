@@ -1,72 +1,14 @@
-#!/usr/bin/env node
-// End-to-end check of leave requests (+ audit log, roster coverage panel) against a production build, using the fake
-// Google and the in-memory data store from fake-google.cjs. Needs `npm run build` first and Playwright.
-// Run: node scripts/e2e/leave.e2e.mjs
-import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { startHarness } from './harness.mjs';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
-const PORT = 4399;
-const BASE = `http://localhost:${PORT}`;
-const dir = mkdtempSync(join(tmpdir(), 'leave-e2e-'));
-const root = resolve(import.meta.dirname, '../..');
-
-const HEAD = ['id', 'email', 'name', 'employeeId', 'googleId', 'isActive', 'joinedDate', 'updatedAt', 'phoneNumber', 'roleId', 'avatar', 'locationId', 'access'];
-const person = (id, email, name, access) => [id, email, name, '', '', true, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', '', '', '', '', access];
-writeFileSync(join(dir, 'users.json'), JSON.stringify({ values: [HEAD, person('u-root', 'root@airasia.com', 'Root Admin', 'admin'), person('u-ann', 'ann@airasia.com', 'Ann Planner', 'planner'), person('u-bob', 'bob@airasia.com', 'Bob Member', 'member')] }));
-// A coverage target nobody meets (no STD shifts rostered) so the Roster panel has something to say.
-writeFileSync(join(dir, 'seed.json'), JSON.stringify({ coverage_targets: [['id', 'locationId', 'code', 'days', 'minStaff', 'active'], ['c1', '', 'STD', 'every', 2, true]] }));
-const setIdentity = (email) => writeFileSync(join(dir, 'identity.json'), JSON.stringify({ sub: `sub-${email}`, email }));
-const tabs = () => JSON.parse(readFileSync(join(dir, 'tabs.json'), 'utf8'));
-const table = (name) => { const [h = [], ...rows] = tabs()[name] ?? []; return rows.map((r) => Object.fromEntries(h.map((k, i) => [k, r[i]]))); };
-
-const todayKL = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-const plus = (n) => { const [y, m, d] = todayKL.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
-
-const pem = execFileSync('openssl', ['genrsa', '2048'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
-const server = spawn('npx', ['next', 'start', '-p', String(PORT)], {
-  cwd: root,
-  env: {
-    ...process.env, NODE_OPTIONS: `--require ${join(root, 'scripts/e2e/fake-google.cjs')}`, FAKE_DIR: dir,
-    DATA_STORE_ID: 'store', DATA_STORE_CLIENT_EMAIL: 'svc@example.iam.example.com', DATA_STORE_PRIVATE_KEY: pem,
-    AUTH_SECRET: 'e2e-secret-e2e-secret', GOOGLE_CLIENT_ID: 'cid.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'csecret', APP_URL: BASE,
-  },
-  stdio: process.env.E2E_DEBUG ? 'inherit' : 'ignore',
-  detached: true,
+const { dir, BASE, table, plus, signIn, check, until, stop, finish } = await startHarness({
+  prefix: 'leave-e2e', port: 4399,
+  people: [['u-root', 'root@airasia.com', 'Root Admin', 'admin'], ['u-ann', 'ann@airasia.com', 'Ann Planner', 'planner'], ['u-bob', 'bob@airasia.com', 'Bob Member', 'member']],
+  // A coverage target nobody meets (no STD shifts rostered) so the Roster panel has something to say.
+  seed: { coverage_targets: [['id', 'locationId', 'code', 'days', 'minStaff', 'active'], ['c1', '', 'STD', 'every', 2, true]] },
 });
-for (let i = 0; i < 60; i++) {
-  try { if ((await fetch(`${BASE}/login`)).ok) break; } catch { /* not up yet */ }
-  await new Promise((r) => setTimeout(r, 500));
-}
-
-const until = async (fn, ms = 10000) => { const end = Date.now() + ms; while (Date.now() < end) { if (fn()) return true; await new Promise((r) => setTimeout(r, 150)); } return fn(); };
-const results = [];
-const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? '✅' : '❌'} ${name}${detail ? ` — ${detail}` : ''}`); };
-
-async function signIn(browser, email, viewport = { width: 1280, height: 800 }) {
-  setIdentity(email);
-  const ctx = await browser.newContext({ viewport });
-  const page = await ctx.newPage();
-  await page.route(/\/api\/auth\/google(\?|$)/, async (route) => {
-    const res = await route.fetch({ maxRedirects: 0 });
-    const to = new URL(res.headers()['location']);
-    if (to.origin !== 'https://accounts.google.com') return route.fulfill({ response: res });
-    writeFileSync(join(dir, 'nonce.txt'), to.searchParams.get('nonce'));
-    await route.fulfill({ response: res, status: 302, headers: { ...res.headers(), location: `${to.searchParams.get('redirect_uri')}?code=abc&state=${to.searchParams.get('state')}` } });
-  });
-  // Start the flow directly (the login button is the same link); retry once if the first hop races the route hook.
-  for (let attempt = 0; attempt < 3 && page.url() !== `${BASE}/leave`; attempt++) {
-    await page.goto(`${BASE}/api/auth/google?next=%2Fleave`, { waitUntil: 'load' }).catch(() => {});
-  }
-  if (page.url() !== `${BASE}/leave`) {
-    console.log(`sign-in as ${email} stuck at ${page.url()}`);
-    throw new Error(`sign-in failed for ${email}`);
-  }
-  return { ctx, page };
-}
 
 async function request(page, { code, from, to, note }) {
   await page.getByRole('button', { name: /Request leave/ }).first().click();
@@ -195,8 +137,6 @@ try {
   await ann.ctx.close();
 } finally {
   await browser.close();
-  try { process.kill(-server.pid); } catch { /* already gone */ }
+  stop();
 }
-const failed = results.filter((r) => !r).length;
-console.log(failed ? `\n${failed} check(s) failed` : `\nAll ${results.length} leave e2e checks passed (screenshots in ${dir})`);
-process.exit(failed ? 1 : 0);
+finish('leave');

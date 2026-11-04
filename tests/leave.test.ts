@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canDecideLeave, canTransition, cleanLeaveInput, datesBetween, MAX_LEAVE_DAYS, validateLeaveInput, visibleLeave } from '../lib/leave.ts';
+import { canDecideLeave, canRevokeLeave, canTransition, cleanLeaveInput, datesBetween, dayBefore, MAX_LEAVE_DAYS, planRevoke, validateLeaveInput, visibleLeave } from '../lib/leave.ts';
 import { ACCESS_LEVELS, can } from '../lib/access.ts';
 
 const ctx = (over = {}) => ({
@@ -67,6 +67,66 @@ test('canTransition: only pending moves', () => {
   assert.ok(canTransition('pending', 'approved') && canTransition('pending', 'rejected') && canTransition('pending', 'cancelled'));
   assert.ok(!canTransition('approved', 'rejected') && !canTransition('rejected', 'approved') && !canTransition('cancelled', 'approved'));
   assert.ok(!canTransition('pending', 'pending'));
+  assert.ok(!canTransition('pending', 'revoked')); // nothing to take back yet
+});
+
+test('canTransition: only approved leave can be revoked, and revoked is final', () => {
+  assert.ok(canTransition('approved', 'revoked'));
+  for (const from of ['rejected', 'cancelled', 'revoked'] as const) assert.ok(!canTransition(from, 'revoked'), from);
+  for (const to of ['approved', 'rejected', 'cancelled', 'pending'] as const) assert.ok(!canTransition('revoked', to), to);
+});
+
+test('canRevokeLeave: the requester (own leave) or anyone who could decide it', () => {
+  const scope = new Set(['x']);
+  assert.ok(canRevokeLeave('member', 'm', 'm', null)); // a member takes back their own leave
+  assert.ok(!canRevokeLeave('member', 'm', 'other', null));
+  assert.ok(canRevokeLeave('lead', 'l', 'l', scope)); // a lead cancelling their own is allowed (it only frees their days)
+  assert.ok(canRevokeLeave('lead', 'l', 'x', scope));
+  assert.ok(!canRevokeLeave('lead', 'l', 'outsider', scope));
+  assert.ok(canRevokeLeave('planner', 'p', 'x', null) && canRevokeLeave('admin', 'a', 'x', null));
+  assert.ok(!canRevokeLeave('member', '', '', null)); // no signed-in person
+});
+
+test('dayBefore: month and year edges', () => {
+  assert.equal(dayBefore('2026-11-01'), '2026-10-31');
+  assert.equal(dayBefore('2026-01-01'), '2025-12-31');
+  assert.equal(dayBefore('2028-03-01'), '2028-02-29');
+});
+
+const req = { startDate: '2026-11-10', endDate: '2026-11-14', code: 'AL' };
+const cells = (dates: string[], code = 'AL') => dates.map((date) => ({ date, code }));
+const week = ['2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14'];
+
+test('planRevoke: leave that has not started is revoked and every day cleared', () => {
+  const p = planRevoke(req, '2026-11-04', cells(week));
+  assert.equal(p.kind, 'revoked');
+  assert.deepEqual(p.clear, week);
+  assert.equal(p.untouched, 0);
+  assert.equal(p.newEndDate, null);
+  assert.equal(planRevoke(req, '2026-11-10', cells(week)).kind, 'revoked'); // starts today: nothing has passed
+});
+
+test('planRevoke: leave under way is shortened to end yesterday; past days stay', () => {
+  const p = planRevoke(req, '2026-11-12', cells(week));
+  assert.equal(p.kind, 'shortened');
+  assert.deepEqual(p.clear, ['2026-11-12', '2026-11-13', '2026-11-14']);
+  assert.equal(p.futureDays, 3);
+  assert.equal(p.newEndDate, '2026-11-11');
+});
+
+test('planRevoke: a day changed to another code is left alone and counted; a missing row too', () => {
+  const roster = [...cells(['2026-11-10', '2026-11-12', '2026-11-14']), { date: '2026-11-11', code: 'STD' }]; // 13th has no row
+  const p = planRevoke(req, '2026-11-04', roster);
+  assert.deepEqual(p.clear, ['2026-11-10', '2026-11-12', '2026-11-14']);
+  assert.equal(p.untouched, 2);
+  assert.equal(p.futureDays, 5);
+});
+
+test('planRevoke: finished leave and bad dates do nothing', () => {
+  assert.equal(planRevoke(req, '2026-11-15', cells(week)).kind, 'nothing');
+  assert.equal(planRevoke({ ...req, startDate: 'x' }, '2026-11-04', []).kind, 'nothing');
+  assert.equal(planRevoke(req, '2026-11-14', cells(week)).kind, 'shortened'); // last day still counts as remaining
+  assert.deepEqual(planRevoke(req, '2026-11-14', cells(week)).clear, ['2026-11-14']);
 });
 
 test('visibleLeave: members own, leads own + teams, planners/admins all', () => {

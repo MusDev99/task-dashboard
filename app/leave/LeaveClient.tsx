@@ -9,10 +9,10 @@ import ToastRegion from "../components/ui/Toast";
 import { useToasts } from "../components/ui/useToasts";
 import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, PlusIcon } from "../components/ui/Icons";
 import { displayName } from "../lib/ui";
-import { RejectDialog, RequestDialog } from "./LeaveDialogs";
+import { RejectDialog, RequestDialog, RevokeDialog } from "./LeaveDialogs";
 import type { LeaveRow, LeaveTypeOption } from "./types";
 
-const BADGE: Record<LeaveStatus, string> = { pending: "badge-amber", approved: "badge-emerald", rejected: "badge-danger", cancelled: "badge-neutral" };
+const BADGE: Record<LeaveStatus, string> = { pending: "badge-amber", approved: "badge-emerald", rejected: "badge-danger", cancelled: "badge-neutral", revoked: "badge-neutral" };
 
 const fmt = (d: string) => {
   const [y, m, day] = d.split("-").map(Number);
@@ -36,6 +36,7 @@ export default function LeaveClient({ rows, leaveTypes, myRequests, today, canRe
   const [size, setSize] = useState(10);
   const [requesting, setRequesting] = useState(false);
   const [rejecting, setRejecting] = useState<LeaveRow | null>(null);
+  const [revoking, setRevoking] = useState<LeaveRow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
@@ -134,13 +135,14 @@ export default function LeaveClient({ rows, leaveTypes, myRequests, today, canRe
                       <span className={`badge ${BADGE[r.status]}`}>{LEAVE_STATUS_LABEL[r.status]}</span>
                       {r.decidedByName && r.status !== "pending" && r.status !== "cancelled" && <span className="muted"> by {displayName(r.decidedByName)}</span>}
                     </td>
-                    <td data-label="Note" className="leave-note">{[r.note, r.decisionNote && `Reply: ${r.decisionNote}`].filter(Boolean).join(" · ") || "—"}</td>
+                    <td data-label="Note" className="leave-note">{[r.note, r.decisionNote && (r.decisionNote.startsWith("Shortened") ? r.decisionNote : `Reply: ${r.decisionNote}`)].filter(Boolean).join(" · ") || "—"}</td>
                     <td data-label="" className="card-actions">
                       <div className="row-actions">
                         {r.decidable && <>
                           <button type="button" className="btn btn-primary" disabled={busy === r.id} onClick={() => approve(r)} aria-label={`Approve leave for ${displayName(r.userName)}`}>{busy === r.id ? "Working…" : "Approve"}</button>
                           <button type="button" className="btn" disabled={busy === r.id} onClick={() => setRejecting(r)} aria-label={`Reject leave for ${displayName(r.userName)}`}>Reject</button>
                         </>}
+                        {r.revocable && <button type="button" className="btn" disabled={busy === r.id} onClick={() => setRevoking(r)} aria-label={`${r.mine ? "Cancel" : "Revoke"} approved leave for ${displayName(r.userName)}`}>{r.mine ? "Cancel leave" : "Revoke"}</button>}
                         {r.mine && r.status === "pending" && <button type="button" className="btn" disabled={busy === r.id} onClick={() => cancel(r)}>Cancel request</button>}
                       </div>
                     </td>
@@ -155,6 +157,7 @@ export default function LeaveClient({ rows, leaveTypes, myRequests, today, canRe
 
       {requesting && <RequestDialog leaveTypes={leaveTypes} myRequests={myRequests} today={today} onClose={() => setRequesting(false)} onDone={(m) => { setRequesting(false); notify("success", m); }} />}
       {rejecting && <RejectDialog row={rejecting} onClose={() => setRejecting(null)} onDone={(m) => { setRejecting(null); notify("success", m); }} />}
+      {revoking && <RevokeDialog row={revoking} today={today} onClose={() => setRevoking(null)} onDone={(m) => { setRevoking(null); notify("success", m); }} />}
       <ToastRegion toasts={toasts} />
     </div>
   );

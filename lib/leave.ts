@@ -1,9 +1,9 @@
 // Leave requests (pure, no data access): shapes, validation and who may decide.
 // No runtime imports on purpose: tests run this file directly with `node --test`.
 
-export const LEAVE_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
+export const LEAVE_STATUSES = ["pending", "approved", "rejected", "cancelled", "revoked"] as const;
 export type LeaveStatus = (typeof LEAVE_STATUSES)[number];
-export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = { pending: "Pending", approved: "Approved", rejected: "Rejected", cancelled: "Cancelled" };
+export const LEAVE_STATUS_LABEL: Record<LeaveStatus, string> = { pending: "Pending", approved: "Approved", rejected: "Rejected", cancelled: "Cancelled", revoked: "Revoked" };
 
 export interface LeaveRequest {
   id: string;
@@ -111,8 +111,43 @@ export function canDecideLeave(level: string, actorUid: string, requesterId: str
   return false;
 }
 
-/** Only a pending request can change state. */
-export const canTransition = (from: LeaveStatus, to: LeaveStatus) => from === "pending" && (to === "approved" || to === "rejected" || to === "cancelled");
+/** A pending request can be approved, rejected or cancelled; an approved one can only be revoked. Everything else is final. */
+export const canTransition = (from: LeaveStatus, to: LeaveStatus) =>
+  (from === "pending" && (to === "approved" || to === "rejected" || to === "cancelled")) || (from === "approved" && to === "revoked");
+
+/** The requester may take back their own approved leave; anyone who could decide it may revoke it. */
+export function canRevokeLeave(level: string, actorUid: string, requesterId: string, scope: ReadonlySet<string> | null): boolean {
+  return (!!actorUid && actorUid === requesterId) || canDecideLeave(level, actorUid, requesterId, scope);
+}
+
+/** The calendar day before `date` (YYYY-MM-DD). */
+export const dayBefore = (date: string) => fromDayNo(dayNo(date) - 1);
+
+export interface RevokePlan {
+  /** nothing = the leave is already over; revoked = it hadn't started; shortened = under way, so it now ends yesterday. */
+  kind: "nothing" | "revoked" | "shortened";
+  /** Roster days to clear: from today on, and still holding this leave code. */
+  clear: string[];
+  /** Remaining days that no longer hold the leave code (changed by a planner, or already cleared): left alone. */
+  untouched: number;
+  /** Remaining days of the request (today onwards). */
+  futureDays: number;
+  newEndDate: string | null;
+}
+
+/**
+ * What revoking would do. Days before today stay as history. Only days whose roster cell still holds the leave
+ * code are cleared, so a day a planner has since changed to something else is never wiped.
+ */
+export function planRevoke(r: { startDate: string; endDate: string; code: string }, today: string, roster: readonly { date: string; code: string }[]): RevokePlan {
+  const none: RevokePlan = { kind: "nothing", clear: [], untouched: 0, futureDays: 0, newEndDate: null };
+  if (!isRealDate(r.startDate) || !isRealDate(r.endDate) || !isRealDate(today) || r.endDate < today) return none;
+  const future = datesBetween(r.startDate > today ? r.startDate : today, r.endDate);
+  const has = new Map(roster.map((x) => [x.date, x.code]));
+  const clear = future.filter((d) => has.get(d) === r.code);
+  const started = r.startDate < today;
+  return { kind: started ? "shortened" : "revoked", clear, untouched: future.length - clear.length, futureDays: future.length, newEndDate: started ? dayBefore(today) : null };
+}
 
 /** Requests this person may see: their own, plus (admins/planners) everyone's, plus (leads) their teams'. */
 export function visibleLeave<T extends { userId: string }>(requests: readonly T[], level: string, uid: string, scope: ReadonlySet<string> | null): T[] {
