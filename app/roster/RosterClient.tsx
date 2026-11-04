@@ -13,6 +13,9 @@ import ActionMenu from "../components/ui/ActionMenu";
 import ResourcePicker from "./ResourcePicker";
 import Legend from "./Legend";
 import SummaryCards from "./SummaryCards";
+import RosterInsights from "./RosterInsights";
+import { computeCoverage, type CoverageTarget } from "../../lib/coverage";
+import { checkRoster, type RuleCode, type RuleLimits } from "../../lib/roster-rules";
 import ClearScheduleDialog from "./ClearScheduleDialog";
 import UploadCsvDialog from "./UploadCsvDialog";
 import ToastRegion from "../components/ui/Toast";
@@ -52,6 +55,13 @@ interface Props {
   canBulk: boolean;
   /** Leads: the people in teams they lead (only their rows are editable). null = no row limit. */
   editableIds: string[] | null;
+  /** Coverage targets, roster-rule limits and the neighbouring months' entries (context for runs and weeks). */
+  targets: CoverageTarget[];
+  limits: RuleLimits;
+  weekStart: 0 | 1;
+  contextEntries: RosterEntry[];
+  /** Every location id → name (a target can point at a location nobody is rostered at). */
+  locationNames: Record<string, string>;
 }
 
 const MINE = "mine"; // team filter value: every team the lead leads
@@ -63,7 +73,7 @@ interface PickerState {
   cells: CellRef[];
 }
 
-export default function RosterClient({ resources, entries, config, month, today, teams, loadError, canEdit, canBulk, editableIds }: Props) {
+export default function RosterClient({ resources, entries, config, month, today, teams, loadError, canEdit, canBulk, editableIds, targets, limits, weekStart, contextEntries, locationNames }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const { toasts, notify } = useToasts();
@@ -341,6 +351,23 @@ export default function RosterClient({ resources, entries, config, month, today,
 
   const scope = focusedUser ? displayName(resources.find((r) => r.id === focusedUser)?.name ?? "") : `${shown.length} shown`;
 
+  // Coverage gaps and rule warnings for the whole month (everyone on the roster, not just the rows shown),
+  // computed from the live values so they update with optimistic edits.
+  const insights = useMemo(() => {
+    const flat = [...values].map(([k, code]) => {
+      const i = k.indexOf("|");
+      return { userId: k.slice(0, i), date: k.slice(i + 1), code };
+    });
+    const dates = Array.from({ length: days }, (_, i) => dateOf(month, i + 1));
+    const ruleCodes = new Map<string, RuleCode>(config.codes.map((c) => [c.code, { type: c.type, hours: c.hours, start: c.start, end: c.end }]));
+    const ids = new Set(resources.map((r) => r.id));
+    const gaps = computeCoverage(dates, targets, resources.map((r) => ({ id: r.id, locationId: r.locationId, isActive: true })), flat);
+    const violations = checkRoster([...flat, ...contextEntries], ruleCodes, limits, weekStart, { from: dates[0], to: dates[dates.length - 1] }).filter((v) => ids.has(v.userId));
+    return { gaps, violations };
+  }, [values, days, month, config, resources, targets, limits, weekStart, contextEntries]);
+  const rulesOn = limits.maxConsecutiveDays > 0 || limits.minRestHours > 0 || limits.maxWeeklyHours > 0;
+  const personNames = useMemo(() => new Map(resources.map((r) => [r.id, r.name])), [resources]);
+
   const summary = (
     <div style={{ marginBottom: "1rem" }}>
       <SummaryCards scope={scope} totalHours={stats.hours} avgPerWeek={stats.avgWeek} leaveDays={stats.leave} />
@@ -416,6 +443,11 @@ export default function RosterClient({ resources, entries, config, month, today,
           />
         </div>
       </div>
+
+      {!loadError && (rulesOn || targets.some((t) => t.active)) && (
+        <RosterInsights gaps={insights.gaps} violations={insights.violations} targets={targets}
+          locationName={(id) => locationNames[id] ?? "Removed location"} personName={(id) => personNames.get(id) ?? "Someone"} />
+      )}
 
       {view !== "day" && summary}
 

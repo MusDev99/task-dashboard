@@ -23,8 +23,19 @@ export const LOCATION_COLUMNS = ["id", "code", "name", "type", "address", "activ
 export const ROLE_COLUMNS = ["id", "name", "description", "active"] as const;
 export const TASK_STATUS_COLUMNS = ["key", "label", "color", "open", "isDefault", "isDone", "active", "sortOrder"] as const;
 export const STORY_POINT_COLUMNS = ["value", "complexity", "label", "active"] as const;
+// Minimum head-count per shift code (optionally per location and day type); drives the Roster coverage panel.
+export const COVERAGE_COLUMNS = ["id", "locationId", "code", "days", "minStaff", "active"] as const;
 export const APP_SETTING_COLUMNS = ["key", "value"] as const;
 
 // Teams (many-to-many with users through team_members). Membership id = `${teamId}_${userId}`, so upserts can't duplicate.
 export const TEAM_COLUMNS = ["id", "name", "description", "leadId", "color", "createdAt", "updatedAt"] as const;
 export const TEAM_MEMBER_COLUMNS = ["id", "teamId", "userId", "addedAt"] as const;
+
+// Leave requests (one row per request; approving one writes the leave code into the roster for each day).
+export const LEAVE_COLUMNS = ["id", "userId", "startDate", "endDate", "code", "note", "status", "decidedBy", "decidedAt", "decisionNote", "createdAt", "updatedAt"] as const;
+
+// In-app notifications, one row per recipient (a person only ever reads or marks their own).
+export const NOTIFICATION_COLUMNS = ["id", "userId", "kind", "title", "body", "href", "createdAt", "readAt"] as const;
+
+// Append-only change history (admins read it on /audit). Never edited or deleted by the app.
+export const AUDIT_COLUMNS = ["id", "at", "actorId", "actorLevel", "action", "entity", "entityId", "summary"] as const;

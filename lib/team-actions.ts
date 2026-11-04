@@ -9,6 +9,7 @@ import { memberId, toTeamRows } from "./teams";
 import type { Team, TeamInput } from "../app/teams/types";
 import { actorWith, forbidden, requireActor } from "./auth";
 import { can, canEditTeam } from "./access";
+import { recordAudit } from "./audit-log";
 
 export type TeamResult<T> = { ok: true; data: T } | { ok: false; errors?: TeamErrors; message?: string };
 
@@ -33,7 +34,7 @@ const memberRows = (teamId: string, userIds: string[], stamp: string): Record<st
   userIds.map((userId) => ({ id: memberId(teamId, userId), teamId, userId, addedAt: stamp }));
 
 export async function createTeam(raw: Partial<TeamInput>): Promise<TeamResult<Team>> {
-  const { denied } = await actorWith("teams.manage", "createTeam");
+  const { actor, denied } = await actorWith("teams.manage", "createTeam");
   if (denied) return denied;
   const input = cleanTeamInput(raw);
   try {
@@ -46,6 +47,7 @@ export async function createTeam(raw: Partial<TeamInput>): Promise<TeamResult<Te
     // Team first, then memberships (a failure in between leaves an empty team, never orphan members).
     await appendRow("teams", TEAM_COLUMNS, { ...team });
     await upsertRowsById("team_members", TEAM_MEMBER_COLUMNS, memberRows(team.id, input.memberIds, stamp));
+    await recordAudit(actor, { action: "create", entity: "team", entityId: team.id, summary: `Created team “${team.name}” with ${input.memberIds.length} member${input.memberIds.length === 1 ? "" : "s"}` });
     refresh();
     return { ok: true, data: team };
   } catch (e) {
@@ -81,6 +83,7 @@ export async function updateTeam(id: string, raw: Partial<TeamInput>): Promise<T
     const found = await updateRowById("teams", TEAM_COLUMNS, id, { ...team });
     if (!found) return { ok: false, message: "This team no longer exists." };
     await deleteRowsByIds("team_members", removed.map((u) => memberId(id, u)));
+    await recordAudit(actor, { action: "update", entity: "team", entityId: id, summary: `Edited team “${team.name}” (+${added.length} / −${removed.length} members${(input.leadId || null) !== current.leadId ? ", lead changed" : ""})` });
     refresh();
     return { ok: true, data: team };
   } catch (e) {
@@ -90,14 +93,16 @@ export async function updateTeam(id: string, raw: Partial<TeamInput>): Promise<T
 
 /** Removes the team's memberships first, then the team. Users are never deleted. */
 export async function deleteTeam(id: string): Promise<TeamResult<{ membersRemoved: number }>> {
-  const { denied } = await actorWith("teams.manage", "deleteTeam");
+  const { actor, denied } = await actorWith("teams.manage", "deleteTeam");
   if (denied) return denied;
   if (typeof id !== "string" || !id) return { ok: false, message: "This team no longer exists." };
   try {
     await Promise.all([ensureTab("teams", TEAM_COLUMNS), ensureTab("team_members", TEAM_MEMBER_COLUMNS)]);
+    const teamName = (await loadTeams()).teams.find((t) => t.id === id)?.name ?? "a team";
     const membersRemoved = await deleteRowsWhere("team_members", "teamId", id);
     const deleted = await deleteRowsWhere("teams", "id", id);
     if (deleted === 0) return { ok: false, message: "This team no longer exists." };
+    await recordAudit(actor, { action: "delete", entity: "team", entityId: id, summary: `Deleted team “${teamName}” and ${membersRemoved} membership${membersRemoved === 1 ? "" : "s"}` });
     refresh();
     return { ok: true, data: { membersRemoved } };
   } catch (e) {

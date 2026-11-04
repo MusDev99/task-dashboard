@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { appendRow, deleteRowsMatching, ensureTab, readTable, updateRowByKey, writeTable, type Cell } from "./store";
 import { getShiftConfig, DEFAULT_ROSTER_CODES } from "./shifts";
 import { getTaskConfig, DEFAULT_TASK_STATUSES, DEFAULT_STORY_POINTS } from "./task-config";
-import { getLocations, getRoles, readSettingsTab } from "./settings";
+import { getCoverageTargets, getLocations, getRoles, readSettingsTab } from "./settings";
 import { APP_SETTING_COLUMNS } from "./schema";
 import { isMissingTab } from "./cells";
 import { actorWith, requireSession } from "./auth";
+import { recordAudit } from "./audit-log";
 import {
-  SPECS, cleanEntity, keyOf, validateEntity, validateGeneral,
+  SPECS, cleanEntity, keyOf, validateCoverageRefs, validateEntity, validateGeneral,
   type EntityKind, type GeneralInput, type SettingErrors, type SettingRecord,
 } from "./settings-validation";
 
@@ -38,6 +39,8 @@ async function currentRecords(kind: EntityKind): Promise<SettingRecord[]> {
       return (await getTaskConfig()).statuses.map((s) => ({ ...s }));
     case "point":
       return (await getTaskConfig()).storyPoints.map((p) => ({ ...p }));
+    case "coverage":
+      return (await getCoverageTargets()).map((t) => ({ ...t }));
   }
 }
 
@@ -75,18 +78,25 @@ export async function getUsageCounts(): Promise<Record<EntityKind, Record<string
     return m;
   };
   const codes = count(roster, "code");
-  return { shift: codes, leave: codes, location: count(users, "locationId"), role: count(users, "roleId"), status: count(tasks, "status"), point: count(tasks, "storyPoints") };
+  return { shift: codes, leave: codes, location: count(users, "locationId"), role: count(users, "roleId"), status: count(tasks, "status"), point: count(tasks, "storyPoints"), coverage: {} };
 }
 
 /** "3 roster days", "1 person", "2 tasks" */
 function usageText(kind: EntityKind, n: number): string {
   if (kind === "shift" || kind === "leave") return `${n} roster day${n === 1 ? "" : "s"}`;
   if (kind === "location" || kind === "role") return n === 1 ? "1 person" : `${n} people`;
+  if (kind === "coverage") return `${n} target${n === 1 ? "" : "s"}`;
   return `${n} task${n === 1 ? "" : "s"}`;
 }
 
+/** Short name for toasts and the audit log. */
+function nameOf(kind: EntityKind, r: SettingRecord): string {
+  if (kind === "coverage") return `${r.code} ≥ ${r.minStaff}`;
+  return String(r.label || r.name || r.code || r.value);
+}
+
 export async function saveSetting(kind: EntityKind, originalKey: string | null, raw: Record<string, unknown>): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "saveSetting");
+  const { actor, denied } = await actorWith("settings.edit", "saveSetting");
   if (denied) return denied;
   try {
     const spec = SPECS[kind];
@@ -96,10 +106,15 @@ export async function saveSetting(kind: EntityKind, originalKey: string | null, 
       // Keys are immutable: an edit can never move a record to a different code/key/value.
       if (!existing.some((x) => keyOf(kind, x) === originalKey)) return { ok: false, message: `This ${spec.noun} no longer exists.` };
       record[spec.keyField] = kind === "point" ? Number(originalKey) : originalKey;
-    } else if (kind === "location" || kind === "role") {
+    } else if (kind === "location" || kind === "role" || kind === "coverage") {
       record.id = crypto.randomUUID();
     }
     const errors = validateEntity(kind, record, existing, originalKey);
+    if (kind === "coverage" && !Object.keys(errors).length) {
+      const [shifts, locations] = await Promise.all([getShiftConfig(), getLocations()]);
+      const previous = originalKey ? existing.find((x) => keyOf(kind, x) === originalKey) ?? null : null;
+      Object.assign(errors, validateCoverageRefs(record, shifts.codes.filter((c) => c.type === "shift"), locations, previous));
+    }
     if (Object.keys(errors).length) return { ok: false, errors };
 
     await seedIfMissing(kind);
@@ -114,8 +129,9 @@ export async function saveSetting(kind: EntityKind, originalKey: string | null, 
     }
     if (originalKey) await updateRowByKey(spec.tab, spec.headers, spec.keyField, originalKey, asRow(record));
     else await appendRow(spec.tab, spec.headers, asRow(record));
+    const name = nameOf(kind, record);
+    await recordAudit(actor, { action: originalKey ? "update" : "create", entity: "setting", entityId: `${kind}:${keyOf(kind, record)}`, summary: `${originalKey ? "Saved" : "Added"} ${spec.noun} “${name}”` });
     refresh();
-    const name = String(record.label || record.name || record.code || record.value);
     return { ok: true, message: `${originalKey ? "Saved" : "Added"} ${spec.noun} “${name}”` };
   } catch (e) {
     return fail(e);
@@ -129,11 +145,11 @@ export async function setSettingActive(kind: EntityKind, key: string, active: bo
   if (!record) return { ok: false, message: `This ${SPECS[kind].noun} no longer exists.` };
   const res = await saveSetting(kind, key, { ...record, active });
   if (!res.ok) return res.errors ? { ok: false, message: Object.values(res.errors)[0] } : res;
-  return { ok: true, message: `${active ? "Activated" : "Deactivated"} ${SPECS[kind].noun} “${record.label || record.name || record.code || record.value}”` };
+  return { ok: true, message: `${active ? "Activated" : "Deactivated"} ${SPECS[kind].noun} “${nameOf(kind, record)}”` };
 }
 
 export async function deleteSetting(kind: EntityKind, key: string): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "deleteSetting");
+  const { actor, denied } = await actorWith("settings.edit", "deleteSetting");
   if (denied) return denied;
   try {
     const spec = SPECS[kind];
@@ -148,16 +164,24 @@ export async function deleteSetting(kind: EntityKind, key: string): Promise<Sett
     }
     if (kind === "point" && existing.length <= 1) return { ok: false, message: "Keep at least one story-point value." };
     await seedIfMissing(kind);
+    // Coverage targets point at shifts and locations: remove them first so none is left dangling.
+    let removedTargets = 0;
+    if ((kind === "shift" || kind === "location") && (await readSettingsTab("coverage_targets")) !== null) {
+      const column = kind === "shift" ? "code" : "locationId";
+      const ids = (await getCoverageTargets()).filter((t) => t[column] === key).map((t) => t.id);
+      removedTargets = ids.length ? await deleteRowsMatching("coverage_targets", "id", new Set(ids)) : 0;
+    }
     await deleteRowsMatching(spec.tab, spec.keyField, new Set([key]));
+    await recordAudit(actor, { action: "delete", entity: "setting", entityId: `${kind}:${key}`, summary: `Deleted ${spec.noun} “${nameOf(kind, record)}”${removedTargets ? ` and ${removedTargets} coverage target${removedTargets === 1 ? "" : "s"}` : ""}` });
     refresh();
-    return { ok: true, message: `Deleted ${spec.noun} “${record.label || record.name || record.code || record.value}”` };
+    return { ok: true, message: `Deleted ${spec.noun} “${nameOf(kind, record)}”` };
   } catch (e) {
     return fail(e);
   }
 }
 
 export async function saveGeneral(raw: Record<string, unknown>): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "saveGeneral");
+  const { actor, denied } = await actorWith("settings.edit", "saveGeneral");
   if (denied) return denied;
   try {
     const g: GeneralInput = {
@@ -166,11 +190,15 @@ export async function saveGeneral(raw: Record<string, unknown>): Promise<Setting
       weekStart: Number(raw.weekStart),
       maxLabels: Number(raw.maxLabels),
       maxLinks: Number(raw.maxLinks),
+      maxConsecutiveDays: Number(raw.maxConsecutiveDays),
+      minRestHours: Number(raw.minRestHours),
+      maxWeeklyHours: Number(raw.maxWeeklyHours),
     };
     const errors = validateGeneral(g);
     if (Object.keys(errors).length) return { ok: false, errors };
     await ensureTab("app_settings", APP_SETTING_COLUMNS);
     await writeTable("app_settings", [...APP_SETTING_COLUMNS], Object.entries(g).map(([k, v]) => [k, v]));
+    await recordAudit(actor, { action: "update", entity: "setting", entityId: "general", summary: "Saved general settings" });
     refresh();
     return { ok: true, message: "Saved general settings" };
   } catch (e) {

@@ -21,13 +21,16 @@ export type Capability =
   | "users.view"
   | "users.edit" // includes access levels
   | "settings.view"
-  | "settings.edit";
+  | "settings.edit"
+  | "leave.request" // ask for leave for myself
+  | "leave.decide" // approve / reject (leads: only people in teams they lead, never themselves)
+  | "audit.view"; // read the change history
 
 const MATRIX: Record<AccessLevel, readonly Capability[]> = {
-  admin: ["roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "users.edit", "settings.view", "settings.edit"],
-  planner: ["roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "settings.view"],
-  lead: ["roster.edit", "tasks.edit", "tasks.statusOwn", "teams.editLed", "users.view"],
-  member: ["tasks.statusOwn"],
+  admin: ["leave.request", "leave.decide", "roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "users.edit", "settings.view", "settings.edit", "audit.view"],
+  planner: ["leave.request", "leave.decide", "roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "settings.view"],
+  lead: ["leave.request", "leave.decide", "roster.edit", "tasks.edit", "tasks.statusOwn", "teams.editLed", "users.view"],
+  member: ["leave.request", "tasks.statusOwn"],
 };
 
 export const FORBIDDEN_MESSAGE = "You don't have permission to do that.";

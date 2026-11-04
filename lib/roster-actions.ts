@@ -11,6 +11,7 @@ import type { ActionResult } from "./user-actions";
 import type { CellRef, RosterEntry } from "../app/roster/types";
 import { actorWith, forbidden, requireSession, type Actor } from "./auth";
 import { ledUserIds, rosterRefused, rosterScoped } from "./access";
+import { recordAudit } from "./audit-log";
 
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 const refresh = () => {
@@ -64,6 +65,7 @@ export async function setCells(cells: CellRef[], code: string): Promise<ActionRe
       ROSTER_COLUMNS,
       [...unique].map(([id, c]) => ({ id, userId: c.userId, date: c.date, type, code, updatedAt: stamp }))
     );
+    await recordAudit(actor, { action: "update", entity: "roster", summary: `Set ${code} on ${unique.size} day${unique.size === 1 ? "" : "s"} for ${new Set(cells.map((c) => c.userId)).size} person(s)` });
     refresh();
     return { ok: true, data: { count: unique.size } };
   } catch (e) {
@@ -82,6 +84,7 @@ export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count
     const error = validateCells(cells, userIds, config);
     if (error) return { ok: false, message: error };
     const count = await deleteRowsByIds("roster", cells.map((c) => rosterId(c.userId, c.date)));
+    await recordAudit(actor, { action: "delete", entity: "roster", summary: `Cleared ${count} roster day${count === 1 ? "" : "s"}` });
     refresh();
     return { ok: true, data: { count } };
   } catch (e) {
@@ -91,7 +94,7 @@ export async function clearCells(cells: CellRef[]): Promise<ActionResult<{ count
 
 /** Bulk clear: every roster row of the given users within one month. */
 export async function clearSchedule(userIds: string[], month: string): Promise<ActionResult<{ count: number }>> {
-  const { denied } = await actorWith("roster.bulk", "clearSchedule");
+  const { actor, denied } = await actorWith("roster.bulk", "clearSchedule");
   if (denied) return denied;
   try {
     if (!validMonth(month)) return { ok: false, message: "Invalid month." };
@@ -101,6 +104,7 @@ export async function clearSchedule(userIds: string[], month: string): Promise<A
     const rows = await readTable("roster");
     const ids = rows.filter((r) => wanted.has(String(r.userId)) && String(r.date).startsWith(month)).map((r) => String(r.id));
     const count = await deleteRowsByIds("roster", ids);
+    await recordAudit(actor, { action: "bulk", entity: "roster", summary: `Cleared ${count} roster day${count === 1 ? "" : "s"} in ${month} for ${wanted.size} person(s)` });
     refresh();
     return { ok: true, data: { count } };
   } catch (e) {
@@ -121,7 +125,7 @@ export interface ImportError {
 
 /** Resolve and validate CSV rows. With `apply=false` it only reports what would happen. */
 export async function importRoster(rows: ImportRow[], apply: boolean): Promise<ActionResult<{ count: number; errors: ImportError[] }>> {
-  const { denied } = await actorWith("roster.bulk", "importRoster");
+  const { actor, denied } = await actorWith("roster.bulk", "importRoster");
   if (denied) return denied;
   try {
     if (!Array.isArray(rows) || rows.length === 0) return { ok: false, message: "The file has no data rows." };
@@ -147,6 +151,7 @@ export async function importRoster(rows: ImportRow[], apply: boolean): Promise<A
 
     if (errors.length || !apply) return { ok: true, data: { count: records.size, errors } };
     await upsertRowsById("roster", ROSTER_COLUMNS, [...records.values()]);
+    await recordAudit(actor, { action: "import", entity: "roster", summary: `Imported ${records.size} roster day${records.size === 1 ? "" : "s"} from CSV` });
     refresh();
     return { ok: true, data: { count: records.size, errors: [] } };
   } catch (e) {

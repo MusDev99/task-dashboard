@@ -1,7 +1,8 @@
 // Test-only preload (node --require): stands in for Google's token/JWKS endpoints and the data-store API so the
 // SSO flow can be exercised end to end without credentials. State is exchanged through files in $FAKE_DIR:
 //   identity.json {sub,email}  who the fake Google authenticates   nonce.txt  nonce captured at "authorize"
-//   users.json {values:[[...]]}  the users tablele                     down  (file exists) = data store returns 403
+//   users.json {values:[[...]]}  the users table                       down  (file exists) = data store returns 403
+//   seed.json {tab:[[...]]}  other tabs to start with                  tabs.json  every tab after each write (for assertions)
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
@@ -27,6 +28,59 @@ function mintIdToken() {
 const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
 const realFetch = globalThis.fetch;
 
+// In-memory data store: every tab is an array of rows (row 1 = header). `users` stays file-backed (users.json), so the
+// SSO e2e can still seed it and read back the bound googleId. All tabs are mirrored to tabs.json after each write so a
+// test can inspect what the app stored. A tab that was never created answers 400 "Unable to parse range", like the real API.
+const tabs = new Map();
+const created = [];
+const loadTab = (t) => (t === 'users' ? JSON.parse(fs.readFileSync(file('users.json'), 'utf8')).values : tabs.get(t));
+const saveTab = (t, values) => {
+  if (t === 'users') fs.writeFileSync(file('users.json'), JSON.stringify({ values }));
+  else tabs.set(t, values);
+  fs.writeFileSync(file('tabs.json'), JSON.stringify(Object.fromEntries([...tabs, ['users', loadTab('users')]])));
+};
+const sheetId = (t) => (t === 'users' ? 0 : 1 + created.indexOf(t));
+const put = (t, startRow, rows) => {
+  const values = loadTab(t) ?? [];
+  rows.forEach((r, i) => { values[startRow - 1 + i] = r; });
+  saveTab(t, values);
+};
+
+// Optional seed: $FAKE_DIR/seed.json {tab: [[header], [row]...]} for tabs other than users.
+if (fs.existsSync(file('seed.json'))) {
+  for (const [t, v] of Object.entries(JSON.parse(fs.readFileSync(file('seed.json'), 'utf8')))) { tabs.set(t, v); created.push(t); }
+}
+
+function fakeStore(url, init) {
+  const method = init.method ?? 'GET';
+  const body = init.body ? JSON.parse(String(init.body)) : {};
+  const p = decodeURIComponent(url.pathname).replace(/^.*\/spreadsheets\/[^/]+/, '');
+  if (p === '/:batchUpdate') {
+    for (const r of body.requests) {
+      if (r.addSheet) { const t = r.addSheet.properties.title; if (!tabs.has(t) && t !== 'users') { created.push(t); saveTab(t, []); } }
+      if (r.deleteDimension) {
+        const { sheetId: id, startIndex, endIndex } = r.deleteDimension.range;
+        const t = id === 0 ? 'users' : created[id - 1];
+        const values = loadTab(t); values.splice(startIndex, endIndex - startIndex); saveTab(t, values);
+      }
+    }
+    return json({});
+  }
+  if (p === '/values:batchUpdate') {
+    for (const d of body.data) { const m = d.range.match(/^([^!]+)!A(\d+)/); put(m[1], Number(m[2]), d.values); }
+    return json({});
+  }
+  const m = p.match(/^\/values\/([^!:/]+)(?:!A(\d+))?(:append|:clear)?$/);
+  if (!m) return json({ sheets: ['users', ...created].map((t) => ({ properties: { title: t, sheetId: sheetId(t) } })) });
+  const [, tab, row, op] = m;
+  const values = loadTab(tab);
+  if (!values) return json({ error: { message: `Unable to parse range: ${tab}` } }, 400);
+  if (op === ':clear') { saveTab(tab, []); return json({}); }
+  if (op === ':append') { saveTab(tab, [...values, ...body.values]); return json({}); }
+  if (method === 'PUT') { put(tab, Number(row), body.values); return json({ updatedRows: body.values.length }); }
+  return json({ values });
+}
+
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url ?? String(input));
   if (url.host === 'oauth2.googleapis.com' && url.pathname === '/token') {
@@ -41,16 +95,7 @@ globalThis.fetch = async (input, init = {}) => {
   // Anything else on *.googleapis.com is the data-store API (its host is configured inside lib/store.ts).
   if (url.host.endsWith('.googleapis.com') && url.host !== 'oauth2.googleapis.com' && url.host !== 'www.googleapis.com') {
     if (fs.existsSync(file('down'))) return json({ error: { message: 'forbidden' } }, 403);
-    const m = decodeURIComponent(url.pathname).match(/\/values\/([^!:/]+)(?:!A(\d+))?/);
-    const tab = m && m[1];
-    if (tab !== 'users') return json({ error: { message: `Unable to parse range: ${tab}` } }, 400);
-    const data = JSON.parse(fs.readFileSync(file('users.json'), 'utf8'));
-    if ((init.method ?? 'GET') === 'PUT') {
-      data.values[Number(m[2]) - 1] = JSON.parse(init.body).values[0];
-      fs.writeFileSync(file('users.json'), JSON.stringify(data));
-      return json({ updatedRows: 1 });
-    }
-    return json(data);
+    return fakeStore(url, init);
   }
   return realFetch(input, init);
 };

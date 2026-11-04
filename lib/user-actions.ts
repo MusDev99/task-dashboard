@@ -9,6 +9,7 @@ import { getLocations, getRoles } from "./settings";
 import type { User } from "../app/lib/types";
 import { actorWith } from "./auth";
 import { parseAccess, removesLastAdmin } from "./access";
+import { recordAudit } from "./audit-log";
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T }
@@ -35,7 +36,7 @@ const fail = (e: unknown): { ok: false; message: string } => {
 };
 
 export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<User>> {
-  const { denied } = await actorWith("users.edit", "createUser");
+  const { actor, denied } = await actorWith("users.edit", "createUser");
   if (denied) return denied;
   const input = cleanUserInput(raw);
   try {
@@ -60,6 +61,7 @@ export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<
       access: parseAccess(input.access || "member"),
     };
     await appendRow("users", USER_COLUMNS, user as unknown as Record<string, string | boolean | null>);
+    await recordAudit(actor, { action: "create", entity: "user", entityId: user.id, summary: `Added ${user.name} as ${user.access}` });
     refresh();
     return { ok: true, data: user };
   } catch (e) {
@@ -68,7 +70,7 @@ export async function createUser(raw: Partial<UserInput>): Promise<ActionResult<
 }
 
 export async function updateUser(id: string, raw: Partial<UserInput>): Promise<ActionResult<User>> {
-  const { denied } = await actorWith("users.edit", "updateUser");
+  const { actor, denied } = await actorWith("users.edit", "updateUser");
   if (denied) return denied;
   const input = cleanUserInput(raw);
   try {
@@ -100,6 +102,11 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
     }
     const found = await updateRowById("users", USER_COLUMNS, id, user as unknown as Record<string, string | boolean | null>);
     if (!found) return { ok: false, message: "This user no longer exists." };
+    const notes = [
+      user.access !== current.access ? `access ${current.access} → ${user.access}` : "",
+      user.isActive !== current.isActive ? (user.isActive ? "activated" : "deactivated") : "",
+    ].filter(Boolean);
+    await recordAudit(actor, { action: user.access !== current.access ? "access" : "update", entity: "user", entityId: id, summary: `Edited ${user.name}${notes.length ? ` (${notes.join(", ")})` : ""}` });
     refresh();
     return { ok: true, data: user };
   } catch (e) {
@@ -109,15 +116,22 @@ export async function updateUser(id: string, raw: Partial<UserInput>): Promise<A
 
 /** Hard delete: cleans up everything that points at the user first, then removes the user. */
 export async function deleteUser(id: string): Promise<ActionResult<null>> {
-  const { denied } = await actorWith("users.edit", "deleteUser");
+  const { actor, denied } = await actorWith("users.edit", "deleteUser");
   if (denied) return denied;
   try {
     // Strict read: an outage must not let the last admin be deleted.
-    if (removesLastAdmin(await readUsers(), id, null)) return { ok: false, message: "At least one active admin is required. Make someone else an admin first." };
+    const before = await readUsers();
+    if (removesLastAdmin(before, id, null)) return { ok: false, message: "At least one active admin is required. Make someone else an admin first." };
     // Dependents first, so a failure never leaves rows pointing at a deleted user.
     await deleteRowsWhere("roster", "userId", id).catch((e) => {
       // The roster tab only exists after its first write; a missing tab just means nothing to delete.
       if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e;
+    });
+    await deleteRowsWhere("leave_requests", "userId", id).catch((e) => {
+      if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e; // tab not created yet
+    });
+    await deleteRowsWhere("notifications", "userId", id).catch((e) => {
+      if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e; // tab not created yet
     });
     // Work tasks are kept but unassigned (the work still needs doing).
     await unassignWorkTasks(id);
@@ -125,6 +139,7 @@ export async function deleteUser(id: string): Promise<ActionResult<null>> {
     await removeFromTeams(id);
     const usersDeleted = await deleteRowsWhere("users", "id", id);
     if (usersDeleted === 0) return { ok: false, message: "This user no longer exists." };
+    await recordAudit(actor, { action: "delete", entity: "user", entityId: id, summary: `Deleted ${before.find((u) => u.id === id)?.name ?? "a user"} and their roster, leave and team links` });
     refresh();
     return { ok: true, data: null };
   } catch (e) {

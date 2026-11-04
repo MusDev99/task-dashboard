@@ -9,7 +9,7 @@ import { useToasts } from "../components/ui/useToasts";
 import { AlertIcon } from "../components/ui/Icons";
 import EntitySection from "./EntitySection";
 import GeneralForm from "./GeneralForm";
-import { ENTITIES, SECTION_LABEL, SECTION_ORDER } from "./entities";
+import { ENTITIES, SECTION_LABEL, SECTION_ORDER, coverageEntity } from "./entities";
 
 type Section = EntityKind | "general";
 
@@ -23,7 +23,7 @@ interface Props {
 }
 
 const usageNoun = (kind: EntityKind) => (n: number) =>
-  kind === "shift" || kind === "leave" ? `${n} roster day${n === 1 ? "" : "s"}` : kind === "location" || kind === "role" ? (n === 1 ? "1 person" : `${n} people`) : `${n} task${n === 1 ? "" : "s"}`;
+  kind === "shift" || kind === "leave" ? `${n} roster day${n === 1 ? "" : "s"}` : kind === "location" || kind === "role" ? (n === 1 ? "1 person" : `${n} people`) : kind === "coverage" ? `${n} target${n === 1 ? "" : "s"}` : `${n} task${n === 1 ? "" : "s"}`;
 
 export default function SettingsClient({ general, records, usage, loadError, readOnly }: Props) {
   const params = useSearchParams();
@@ -42,7 +42,7 @@ export default function SettingsClient({ general, records, usage, loadError, rea
       <div className="page-header">
         <div>
           <h1 className="page-title">Operational Settings</h1>
-          <p className="page-subtitle">Configure shifts, leave, locations, roles and the task workflow. Changes apply to everyone immediately.</p>
+          <p className="page-subtitle">Configure shifts, leave, locations, roles, coverage targets, roster rules and the task workflow. Changes apply to everyone immediately.</p>
         </div>
       </div>
 
@@ -65,7 +65,7 @@ export default function SettingsClient({ general, records, usage, loadError, rea
           ) : (
             <EntitySection
               key={section}
-              def={ENTITIES[section]}
+              def={section === "coverage" ? coverageEntity(records.shift, records.location) : ENTITIES[section]}
               records={records[section]}
               siblings={section === "shift" || section === "leave" ? [...records.shift, ...records.leave] : records[section]}
               usage={usage[section]}

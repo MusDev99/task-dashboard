@@ -1,11 +1,14 @@
 // Pure definitions + validation for Operational Settings (safe on server and client).
 import {
-  LOCATION_COLUMNS, ROLE_COLUMNS, ROSTER_CODE_COLUMNS, STORY_POINT_COLUMNS, TASK_STATUS_COLUMNS,
+  COVERAGE_COLUMNS, LOCATION_COLUMNS, ROLE_COLUMNS, ROSTER_CODE_COLUMNS, STORY_POINT_COLUMNS, TASK_STATUS_COLUMNS,
 } from "./schema";
+
+import { validateCoverageRecord } from "./coverage";
+export { validateCoverageRefs } from "./coverage";
 
 export const LOCATION_TYPES = ["office", "station", "site", "remote", "other"] as const;
 
-export type EntityKind = "shift" | "leave" | "location" | "role" | "status" | "point";
+export type EntityKind = "shift" | "leave" | "location" | "role" | "status" | "point" | "coverage";
 export type SettingValue = string | number | boolean;
 export type SettingRecord = Record<string, SettingValue>;
 export type SettingErrors = Record<string, string>;
@@ -25,6 +28,7 @@ export const SPECS: Record<EntityKind, EntitySpec> = {
   role: { tab: "roles", headers: ROLE_COLUMNS, keyField: "id", noun: "role" },
   status: { tab: "task_statuses", headers: TASK_STATUS_COLUMNS, keyField: "key", noun: "task status" },
   point: { tab: "story_points", headers: STORY_POINT_COLUMNS, keyField: "value", noun: "story point" },
+  coverage: { tab: "coverage_targets", headers: COVERAGE_COLUMNS, keyField: "id", noun: "coverage target" },
 };
 
 export const keyOf = (kind: EntityKind, r: SettingRecord) => String(r[SPECS[kind].keyField] ?? "");
@@ -60,6 +64,8 @@ export function cleanEntity(kind: EntityKind, raw: Record<string, unknown>): Set
       return { key: s(raw.key).toLowerCase().replace(/\s+/g, "_"), label: s(raw.label), color: s(raw.color).toLowerCase(), open: b(raw.open, true), isDefault: b(raw.isDefault, false), isDone: b(raw.isDone, false), active: b(raw.active, true), sortOrder: n(raw.sortOrder) || 100 };
     case "point":
       return { value: n(raw.value), complexity: s(raw.complexity).toUpperCase(), label: s(raw.label), active: b(raw.active, true) };
+    case "coverage":
+      return { id: s(raw.id), locationId: s(raw.locationId), code: s(raw.code).toUpperCase(), days: s(raw.days).toLowerCase() || "every", minStaff: n(raw.minStaff), active: b(raw.active, true) };
   }
 }
 
@@ -130,6 +136,7 @@ export function validateEntity(kind: EntityKind, r: SettingRecord, existing: Set
     req("complexity", "Complexity", 4);
     if (String(r.label).length > 40) e.label = "Label must be 40 characters or fewer";
   }
+  if (kind === "coverage") Object.assign(e, validateCoverageRecord(r, others));
   return e;
 }
 
@@ -140,6 +147,9 @@ export interface GeneralInput {
   weekStart: number;
   maxLabels: number;
   maxLinks: number;
+  maxConsecutiveDays: number;
+  minRestHours: number;
+  maxWeeklyHours: number;
 }
 
 export function validTimezone(tz: string): boolean {
@@ -158,5 +168,8 @@ export function validateGeneral(g: GeneralInput): SettingErrors {
   if (g.weekStart !== 0 && g.weekStart !== 1) e.weekStart = "Choose Sunday or Monday";
   if (!Number.isInteger(g.maxLabels) || g.maxLabels < 1 || g.maxLabels > 50) e.maxLabels = "Use 1–50";
   if (!Number.isInteger(g.maxLinks) || g.maxLinks < 1 || g.maxLinks > 50) e.maxLinks = "Use 1–50";
+  if (!Number.isInteger(g.maxConsecutiveDays) || g.maxConsecutiveDays < 0 || g.maxConsecutiveDays > 31) e.maxConsecutiveDays = "Use 0–31 (0 = off)";
+  if (!Number.isFinite(g.minRestHours) || g.minRestHours < 0 || g.minRestHours > 24) e.minRestHours = "Use 0–24 (0 = off)";
+  if (!Number.isFinite(g.maxWeeklyHours) || g.maxWeeklyHours < 0 || g.maxWeeklyHours > 168) e.maxWeeklyHours = "Use 0–168 (0 = off)";
   return e;
 }
