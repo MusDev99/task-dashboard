@@ -4,6 +4,7 @@ import shiftDefaults from "../json/shifts.json";
 import taskDefaults from "../json/task-config.json";
 import { readTable, type Cell } from "./store";
 import { bool, isMissingTab, num, text } from "./cells";
+import { isCoverageDays, type CoverageTarget } from "./coverage";
 
 export interface AppSettings {
   timezone: string;
@@ -12,6 +13,10 @@ export interface AppSettings {
   weekStart: 0 | 1;
   maxLabels: number;
   maxLinks: number;
+  /** Roster rules (warnings only). 0 switches a rule off. */
+  maxConsecutiveDays: number;
+  minRestHours: number;
+  maxWeeklyHours: number;
 }
 
 export interface Location {
@@ -36,6 +41,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   weekStart: 1,
   maxLabels: taskDefaults.maxLabels,
   maxLinks: taskDefaults.maxLinks,
+  maxConsecutiveDays: 6,
+  minRestHours: 11,
+  maxWeeklyHours: 48,
 };
 
 
@@ -77,6 +85,9 @@ export async function getAppSettings(): Promise<AppSettings> {
     weekStart: num(map.get("weekStart") ?? "", DEFAULT_APP_SETTINGS.weekStart) === 0 ? 0 : 1,
     maxLabels: num(map.get("maxLabels") ?? "", DEFAULT_APP_SETTINGS.maxLabels),
     maxLinks: num(map.get("maxLinks") ?? "", DEFAULT_APP_SETTINGS.maxLinks),
+    maxConsecutiveDays: num(map.get("maxConsecutiveDays") ?? "", DEFAULT_APP_SETTINGS.maxConsecutiveDays),
+    minRestHours: num(map.get("minRestHours") ?? "", DEFAULT_APP_SETTINGS.minRestHours),
+    maxWeeklyHours: num(map.get("maxWeeklyHours") ?? "", DEFAULT_APP_SETTINGS.maxWeeklyHours),
   };
 }
 
@@ -86,6 +97,14 @@ export async function getLocations(): Promise<Location[]> {
     .map((r) => ({ id: text(r.id), code: text(r.code), name: text(r.name), type: text(r.type) || "other", address: text(r.address), active: bool(r.active, true) }))
     .filter((l) => l.id)
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Coverage targets (none until the first one is added). Tolerant read: an outage shows no targets, not an error page. */
+export async function getCoverageTargets(): Promise<CoverageTarget[]> {
+  const rows = (await readSettingsTabSafe("coverage_targets")) ?? [];
+  return rows
+    .map((r) => ({ id: text(r.id), locationId: text(r.locationId), code: text(r.code).toUpperCase(), days: isCoverageDays(text(r.days)) ? (text(r.days) as CoverageTarget["days"]) : "every", minStaff: num(r.minStaff), active: bool(r.active, true) }))
+    .filter((t) => t.id && t.code && t.minStaff > 0);
 }
 
 export async function getRoles(): Promise<Role[]> {

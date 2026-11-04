@@ -23,6 +23,8 @@ export const LOCATION_COLUMNS = ["id", "code", "name", "type", "address", "activ
 export const ROLE_COLUMNS = ["id", "name", "description", "active"] as const;
 export const TASK_STATUS_COLUMNS = ["key", "label", "color", "open", "isDefault", "isDone", "active", "sortOrder"] as const;
 export const STORY_POINT_COLUMNS = ["value", "complexity", "label", "active"] as const;
+// Minimum head-count per shift code (optionally per location and day type); drives the Roster coverage panel.
+export const COVERAGE_COLUMNS = ["id", "locationId", "code", "days", "minStaff", "active"] as const;
 export const APP_SETTING_COLUMNS = ["key", "value"] as const;
 
 // Teams (many-to-many with users through team_members). Membership id = `${teamId}_${userId}`, so upserts can't duplicate.

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { COVERAGE_DAYS, COVERAGE_DAYS_LABEL } from "../../lib/coverage";
 import { LOCATION_TYPES, type EntityKind, type SettingRecord } from "../../lib/settings-validation";
 
 export interface FieldDef {
@@ -172,9 +173,47 @@ export const ENTITIES: Record<EntityKind, EntityDef> = {
       { label: "Description", render: (r) => <span className="muted">{String(r.label) || "—"}</span> },
     ],
   },
+  coverage: {
+    kind: "coverage",
+    title: "Coverage targets",
+    description: "The fewest people you need on a shift. The Roster flags every day that falls short. Leave the location empty to count everyone.",
+    addLabel: "Add target",
+    name: (r) => `${r.code} ≥ ${r.minStaff}`,
+    defaults: { locationId: "", code: "", days: "every", minStaff: 1, active: true },
+    // Shift and location pickers are filled in by coverageEntity() from the live lists.
+    fields: [
+      { key: "code", label: "Shift", type: "select", required: true, options: [] },
+      { key: "locationId", label: "Location", type: "select", options: [{ value: "", label: "All locations" }], half: true },
+      { key: "days", label: "Days", type: "select", options: COVERAGE_DAYS.map((d) => ({ value: d, label: COVERAGE_DAYS_LABEL[d] })), half: true },
+      { key: "minStaff", label: "Minimum people", type: "number", required: true, placeholder: "3", hint: "Whole number, at least 1." },
+      activeField,
+    ],
+    columns: [],
+  },
 };
 
-export const SECTION_ORDER: (EntityKind | "general")[] = ["general", "shift", "leave", "location", "role", "status", "point"];
+/** Coverage targets reference shifts and locations, so their pickers and names come from the current lists. */
+export function coverageEntity(shifts: SettingRecord[], locations: SettingRecord[]): EntityDef {
+  const base = ENTITIES.coverage;
+  const locName = new Map(locations.map((l) => [String(l.id), String(l.name)]));
+  const shiftByCode = new Map(shifts.map((s) => [String(s.code), s]));
+  return {
+    ...base,
+    fields: base.fields.map((f) =>
+      f.key === "code" ? { ...f, options: [{ value: "", label: "Choose a shift…" }, ...shifts.filter((s) => s.active).map((s) => ({ value: String(s.code), label: `${s.code} · ${s.label}` }))] }
+      : f.key === "locationId" ? { ...f, options: [{ value: "", label: "All locations" }, ...locations.filter((l) => l.active).map((l) => ({ value: String(l.id), label: String(l.name) }))] }
+      : f
+    ),
+    columns: [
+      { label: "Shift", render: (r) => <Chip text={String(r.code)} color={String(shiftByCode.get(String(r.code))?.color ?? "#8b8da3")} /> },
+      { label: "Location", render: (r) => (r.locationId ? locName.get(String(r.locationId)) ?? "Removed location" : <span className="muted">All locations</span>) },
+      { label: "Days", render: (r) => COVERAGE_DAYS_LABEL[String(r.days) as keyof typeof COVERAGE_DAYS_LABEL] ?? String(r.days) },
+      { label: "Minimum", className: "num", render: (r) => <b className="mono">{String(r.minStaff)}</b> },
+    ],
+  };
+}
+
+export const SECTION_ORDER: (EntityKind | "general")[] = ["general", "shift", "leave", "location", "role", "status", "point", "coverage"];
 export const SECTION_LABEL: Record<EntityKind | "general", string> = {
-  general: "General", shift: "Work shifts", leave: "Leave types", location: "Locations", role: "Roles", status: "Task statuses", point: "Story points",
+  general: "General", shift: "Work shifts", leave: "Leave types", location: "Locations", role: "Roles", status: "Task statuses", point: "Story points", coverage: "Coverage targets",
 };
