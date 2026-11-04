@@ -35,7 +35,7 @@ export default function RosterInsights({ gaps, violations, targets, locationName
         </span>
       </summary>
       <div className="insights-body">
-        {total === 0 && <p className="muted">{activeTargets} coverage {activeTargets === 1 ? "target" : "targets"} met and no one is past a rest or hours rule.</p>}
+        {total === 0 && <p className="muted">{activeTargets === 0 ? "No coverage targets are set." : `${activeTargets} coverage ${activeTargets === 1 ? "target" : "targets"} met.`} No one is past a rest or hours rule.</p>}
         {gaps.length > 0 && (
           <section aria-label="Coverage gaps">
             <h3 className="insights-head">Coverage gaps</h3>

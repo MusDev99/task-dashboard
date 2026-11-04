@@ -34,7 +34,7 @@
 
 **Data impact:** new lazily created tab `audit_log` (`lib/schema.ts` `AUDIT_COLUMNS`); no migration; rollback = ignore/delete the tab.
 **OWASP:** A01 page + capability gate (`audit.view`), no write endpoint exposed; A03 summaries cleaned, rendered as text (React escapes); A09 failures logged server-side, no payloads/secrets in summaries.
-**Laws of UX:** Hick (area pills only), Jakob (table + pagination + search), Miller (10/20/50 per page), Doherty (client-side filtering, skeleton `loading.tsx`). 375px: `data-table` collapses to cards via `data-label`.
+**Laws of UX:** Hick (area pills only), Jakob (table + pagination + search), Miller (10/20/50 per page), Doherty (client-side filtering, skeleton `loading.tsx`). 375px: the table collapses to stacked cards via the shared `.card-table` class (added with the leave feature; the first version of this page did not collapse).
 
 ## 5–6. Verify / validate
 `npm run verify` (tsc + eslint + tests + build) green. Browser pass at 375px/desktop, empty and error states: ⬜ pending (needs data-store credentials in the environment).

@@ -1310,3 +1310,17 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 .insights-head { margin: 0.9rem 0 0.4rem; font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; }
 .insights-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.35rem; font-size: 0.875rem; }
 .insights-detail { color: var(--text-secondary); }
+
+/* Tables that become stacked cards on phones: give the <table> `card-table` and every <td> a data-label. */
+.leave-note { color: var(--text-secondary); overflow-wrap: anywhere; }
+.row-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 768px) {
+  .card-table thead { display: none; }
+  .card-table, .card-table tbody, .card-table tr, .card-table td { display: block; width: 100%; }
+  .card-table tr { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-subtle); }
+  .card-table td { border: 0; padding: 0.2rem 0; display: flex; justify-content: space-between; align-items: center; gap: 1rem; text-align: right; }
+  .card-table td::before { content: attr(data-label); color: var(--text-muted); font-size: 0.75rem; text-align: left; flex-shrink: 0; }
+  .card-table td.card-actions::before { content: none; }
+  .card-table td.card-actions { padding-top: 0.6rem; }
+  .card-table tbody tr:hover { background: transparent; }
+}

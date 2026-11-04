@@ -85,6 +85,17 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
     ),
   },
   {
+    label: "Leave",
+    href: "/leave",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M17 8c-4 0-9 3-9 9 0 0 4-1 7-4s4-5 2-5Z" />
+        <path d="M8 17c0-3 1-6 4-8" />
+        <circle cx="18" cy="5" r="2" />
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     cap: "settings.view",
     href: "/settings",

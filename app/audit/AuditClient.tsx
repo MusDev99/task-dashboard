@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Pagination from "../components/ui/Pagination";
+import { AlertIcon } from "../components/ui/Icons";
 import { AUDIT_ENTITIES, AUDIT_ENTITY_LABELS, filterAudit, paginate, type AuditEntry } from "../../lib/audit";
 import { ACCESS_LABELS, isAccessLevel } from "../../lib/access";
 
@@ -26,7 +27,7 @@ export default function AuditClient({ entries, names, loadError }: { entries: Au
         </div>
       </header>
 
-      {loadError && <div className="banner banner-error" role="alert">The audit log couldn&apos;t be loaded right now. Please try again.</div>}
+      {loadError && <div className="alert alert-danger" role="alert"><AlertIcon /> The audit log couldn&apos;t be loaded right now. Please refresh. If it keeps happening, contact an administrator.</div>}
 
       <div className="toolbar">
         <label className="search">
@@ -45,7 +46,7 @@ export default function AuditClient({ entries, names, loadError }: { entries: Au
         {view.total === 0 ? (
           <div className="empty-state"><p>{entries.length === 0 ? "Nothing has been recorded yet." : "No entries match your filters."}</p></div>
         ) : (
-          <table className="data-table">
+          <table className="data-table card-table">
             <thead>
               <tr><th scope="col">When</th><th scope="col">Person</th><th scope="col">Area</th><th scope="col">What happened</th></tr>
             </thead>
@@ -65,7 +66,7 @@ export default function AuditClient({ entries, names, loadError }: { entries: Au
           </table>
         )}
       </div>
-      <Pagination page={view.page} size={size} total={view.total} onPage={setPage} onSize={(s) => { setSize(s); setPage(1); }} />
+      {view.total > 0 && <Pagination page={view.page} size={size} total={view.total} onPage={setPage} onSize={(s) => { setSize(s); setPage(1); }} />}
     </div>
   );
 }

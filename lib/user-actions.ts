@@ -127,13 +127,16 @@ export async function deleteUser(id: string): Promise<ActionResult<null>> {
       // The roster tab only exists after its first write; a missing tab just means nothing to delete.
       if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e;
     });
+    await deleteRowsWhere("leave_requests", "userId", id).catch((e) => {
+      if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e; // tab not created yet
+    });
     // Work tasks are kept but unassigned (the work still needs doing).
     await unassignWorkTasks(id);
     // Team memberships go; teams they led keep going without a lead.
     await removeFromTeams(id);
     const usersDeleted = await deleteRowsWhere("users", "id", id);
     if (usersDeleted === 0) return { ok: false, message: "This user no longer exists." };
-    await recordAudit(actor, { action: "delete", entity: "user", entityId: id, summary: `Deleted ${before.find((u) => u.id === id)?.name ?? "a user"} and their roster and team links` });
+    await recordAudit(actor, { action: "delete", entity: "user", entityId: id, summary: `Deleted ${before.find((u) => u.id === id)?.name ?? "a user"} and their roster, leave and team links` });
     refresh();
     return { ok: true, data: null };
   } catch (e) {

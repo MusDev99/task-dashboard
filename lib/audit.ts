@@ -1,11 +1,11 @@
 // Audit log rules (pure, no data access): shapes an entry, parses stored rows, filters for display.
 // No runtime imports on purpose: tests run this file directly with `node --test`.
 
-export const AUDIT_ENTITIES = ["task", "roster", "user", "team", "setting"] as const;
+export const AUDIT_ENTITIES = ["task", "roster", "user", "team", "setting", "leave"] as const;
 export type AuditEntity = (typeof AUDIT_ENTITIES)[number];
 
 export const AUDIT_ENTITY_LABELS: Record<AuditEntity, string> = {
-  task: "Tasks", roster: "Roster", user: "Users", team: "Teams", setting: "Settings",
+  task: "Tasks", roster: "Roster", user: "Users", team: "Teams", setting: "Settings", leave: "Leave",
 };
 
 export const AUDIT_ACTIONS = ["create", "update", "delete", "status", "bulk", "import", "access"] as const;

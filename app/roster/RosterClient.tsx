@@ -444,7 +444,7 @@ export default function RosterClient({ resources, entries, config, month, today,
         </div>
       </div>
 
-      {(rulesOn || targets.some((t) => t.active)) && (
+      {!loadError && (rulesOn || targets.some((t) => t.active)) && (
         <RosterInsights gaps={insights.gaps} violations={insights.violations} targets={targets}
           locationName={(id) => locationNames[id] ?? "Removed location"} personName={(id) => personNames.get(id) ?? "Someone"} />
       )}

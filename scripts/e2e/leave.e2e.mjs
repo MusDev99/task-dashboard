@@ -1,0 +1,168 @@
+#!/usr/bin/env node
+// End-to-end check of leave requests (+ audit log, roster coverage panel) against a production build, using the fake
+// Google and the in-memory data store from fake-google.cjs. Needs `npm run build` first and Playwright.
+// Run: node scripts/e2e/leave.e2e.mjs
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+
+const { chromium } = createRequire(import.meta.url)('playwright');
+const PORT = 4399;
+const BASE = `http://localhost:${PORT}`;
+const dir = mkdtempSync(join(tmpdir(), 'leave-e2e-'));
+const root = resolve(import.meta.dirname, '../..');
+
+const HEAD = ['id', 'email', 'name', 'employeeId', 'googleId', 'isActive', 'joinedDate', 'updatedAt', 'phoneNumber', 'roleId', 'avatar', 'locationId', 'access'];
+const person = (id, email, name, access) => [id, email, name, '', '', true, '2026-01-01 00:00:00.000', '2026-01-01 00:00:00.000', '', '', '', '', access];
+writeFileSync(join(dir, 'users.json'), JSON.stringify({ values: [HEAD, person('u-root', 'root@airasia.com', 'Root Admin', 'admin'), person('u-ann', 'ann@airasia.com', 'Ann Planner', 'planner'), person('u-bob', 'bob@airasia.com', 'Bob Member', 'member')] }));
+// A coverage target nobody meets (no STD shifts rostered) so the Roster panel has something to say.
+writeFileSync(join(dir, 'seed.json'), JSON.stringify({ coverage_targets: [['id', 'locationId', 'code', 'days', 'minStaff', 'active'], ['c1', '', 'STD', 'every', 2, true]] }));
+const setIdentity = (email) => writeFileSync(join(dir, 'identity.json'), JSON.stringify({ sub: `sub-${email}`, email }));
+const tabs = () => JSON.parse(readFileSync(join(dir, 'tabs.json'), 'utf8'));
+const table = (name) => { const [h = [], ...rows] = tabs()[name] ?? []; return rows.map((r) => Object.fromEntries(h.map((k, i) => [k, r[i]]))); };
+
+const todayKL = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const plus = (n) => { const [y, m, d] = todayKL.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+
+const pem = execFileSync('openssl', ['genrsa', '2048'], { stdio: ['ignore', 'pipe', 'ignore'] }).toString();
+const server = spawn('npx', ['next', 'start', '-p', String(PORT)], {
+  cwd: root,
+  env: {
+    ...process.env, NODE_OPTIONS: `--require ${join(root, 'scripts/e2e/fake-google.cjs')}`, FAKE_DIR: dir,
+    DATA_STORE_ID: 'store', DATA_STORE_CLIENT_EMAIL: 'svc@example.iam.example.com', DATA_STORE_PRIVATE_KEY: pem,
+    AUTH_SECRET: 'e2e-secret-e2e-secret', GOOGLE_CLIENT_ID: 'cid.apps.googleusercontent.com', GOOGLE_CLIENT_SECRET: 'csecret', APP_URL: BASE,
+  },
+  stdio: process.env.E2E_DEBUG ? 'inherit' : 'ignore',
+  detached: true,
+});
+for (let i = 0; i < 60; i++) {
+  try { if ((await fetch(`${BASE}/login`)).ok) break; } catch { /* not up yet */ }
+  await new Promise((r) => setTimeout(r, 500));
+}
+
+const results = [];
+const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? '✅' : '❌'} ${name}${detail ? ` — ${detail}` : ''}`); };
+
+async function signIn(browser, email, viewport = { width: 1280, height: 800 }) {
+  setIdentity(email);
+  const ctx = await browser.newContext({ viewport });
+  const page = await ctx.newPage();
+  await page.route(/\/api\/auth\/google(\?|$)/, async (route) => {
+    const res = await route.fetch({ maxRedirects: 0 });
+    const to = new URL(res.headers()['location']);
+    if (to.origin !== 'https://accounts.google.com') return route.fulfill({ response: res });
+    writeFileSync(join(dir, 'nonce.txt'), to.searchParams.get('nonce'));
+    await route.fulfill({ response: res, status: 302, headers: { ...res.headers(), location: `${to.searchParams.get('redirect_uri')}?code=abc&state=${to.searchParams.get('state')}` } });
+  });
+  // Start the flow directly (the login button is the same link); retry once if the first hop races the route hook.
+  for (let attempt = 0; attempt < 3 && page.url() !== `${BASE}/leave`; attempt++) {
+    await page.goto(`${BASE}/api/auth/google?next=%2Fleave`, { waitUntil: 'load' }).catch(() => {});
+  }
+  if (page.url() !== `${BASE}/leave`) {
+    console.log(`sign-in as ${email} stuck at ${page.url()}`);
+    throw new Error(`sign-in failed for ${email}`);
+  }
+  return { ctx, page };
+}
+
+async function request(page, { code, from, to, note }) {
+  await page.getByRole('button', { name: /Request leave/ }).first().click();
+  await page.selectOption('#lv-code', code);
+  await page.fill('#lv-startDate', from);
+  await page.fill('#lv-endDate', to);
+  if (note) await page.fill('#lv-note', note);
+  await page.getByRole('button', { name: 'Send request' }).click();
+}
+
+const browser = await chromium.launch();
+try {
+  // ── Bob (member) requests leave ──
+  const bob = await signIn(browser, 'bob@airasia.com');
+  const bp = bob.page;
+  await bp.waitForSelector('h1:has-text("Leave")');
+  check('member sees an empty Leave page with a Request button', (await bp.locator('text=No leave requests yet').count()) === 1 && (await bp.getByRole('button', { name: /Request leave/ }).count()) >= 1);
+  await request(bp, { code: 'AL', from: plus(3), to: plus(5), note: 'Family trip' });
+  await bp.waitForSelector('text=Requested 3 days of leave', { timeout: 15000 }).catch(() => {});
+  let reqs = table('leave_requests');
+  check('request is stored as pending for Bob, 3 days', reqs.length === 1 && reqs[0].status === 'pending' && reqs[0].userId === 'u-bob' && reqs[0].startDate === plus(3) && reqs[0].endDate === plus(5) && reqs[0].code === 'AL', JSON.stringify(reqs[0] ?? null));
+  check('request shows in his list as Pending with a cancel option', (await bp.locator('.badge:has-text("Pending")').count()) >= 1 && (await bp.getByRole('button', { name: 'Cancel request' }).count()) === 1);
+  const memberButtons = await bp.getByRole('button', { name: /^(Approve|Reject) leave for/ }).allTextContents();
+  check('a member has no approve / reject buttons', memberButtons.length === 0, memberButtons.join('|'));
+
+  await request(bp, { code: 'AL', from: plus(4), to: plus(6) });
+  await bp.waitForSelector('.field-error', { timeout: 15000 }).catch(() => {});
+  check('an overlapping request is refused inline', (await bp.locator('.field-error').filter({ hasText: 'already have a pending or approved' }).count()) >= 1);
+  check('...and nothing extra was stored', table('leave_requests').length === 1);
+  await bp.keyboard.press('Escape');
+
+  // ── Ann (planner) approves ──
+  const ann = await signIn(browser, 'ann@airasia.com');
+  const ap = ann.page;
+  await ap.waitForSelector('text=Bob Member');
+  check("planner sees Bob's pending request with Approve / Reject", (await ap.getByRole('button', { name: /Approve leave for Bob/ }).count()) === 1 && (await ap.getByRole('button', { name: /Reject leave for Bob/ }).count()) === 1);
+  await ap.getByRole('button', { name: /Approve leave for Bob/ }).click();
+  await ap.waitForSelector('text=Approved 3 days', { timeout: 15000 }).catch(() => {});
+  reqs = table('leave_requests');
+  check('request is approved by Ann', reqs[0].status === 'approved' && reqs[0].decidedBy === 'u-ann', `${reqs[0].status} by ${reqs[0].decidedBy}`);
+  const roster = table('roster').filter((r) => r.userId === 'u-bob');
+  check('approval wrote AL into the roster for each of the 3 days', roster.length === 3 && roster.every((r) => r.code === 'AL' && r.type === 'leave') && [plus(3), plus(4), plus(5)].every((d) => roster.some((r) => r.date === d && r.id === `u-bob_${d}`)), roster.map((r) => r.date).join(','));
+  check('an approved request can no longer be decided', (await ap.getByRole('button', { name: /Approve leave for Bob/ }).count()) === 0);
+
+  // ── Bob: approved can't be cancelled; a second pending request can ──
+  await bp.reload();
+  await bp.waitForSelector('.badge:has-text("Approved")');
+  check('Bob sees it Approved, with no cancel', (await bp.getByRole('button', { name: 'Cancel request' }).count()) === 0);
+  await request(bp, { code: 'MC', from: plus(10), to: plus(10) });
+  await bp.waitForSelector('text=Requested 1 day of leave', { timeout: 15000 }).catch(() => {});
+  await bp.getByRole('button', { name: 'Cancel request' }).click();
+  await bp.waitForSelector('text=Request cancelled', { timeout: 15000 }).catch(() => {});
+  check('a pending request can be cancelled by its owner', table('leave_requests').some((r) => r.startDate === plus(10) && r.status === 'cancelled'));
+
+  // ── Rejecting with a reason leaves the roster alone ──
+  await request(bp, { code: 'AL', from: plus(20), to: plus(21), note: 'Holiday' });
+  await bp.waitForSelector('text=Requested 2 days of leave', { timeout: 15000 }).catch(() => {});
+  await ap.reload();
+  await ap.getByRole('button', { name: /Reject leave for Bob/ }).click();
+  await ap.fill('#rj-note', 'Peak season');
+  await ap.getByRole('button', { name: 'Reject', exact: true }).click();
+  await ap.waitForSelector('text=Rejected the request from Bob', { timeout: 15000 }).catch(() => {});
+  const rejected = table('leave_requests').find((r) => r.startDate === plus(20));
+  check('rejected with a reason, no roster rows for it', rejected?.status === 'rejected' && rejected.decisionNote === 'Peak season' && !table('roster').some((r) => r.date === plus(20)), JSON.stringify(rejected ?? null));
+
+  // ── Audit log (admin) and roster panel, at phone width ──
+  const audit = table('audit_log');
+  check('every step was audit-logged', ['create', 'status'].every((a) => audit.some((e) => e.entity === 'leave' && e.action === a)) && audit.length >= 6, `${audit.length} entries`);
+  const admin = await signIn(browser, 'root@airasia.com', { width: 375, height: 800 });
+  const rp = admin.page;
+  await rp.goto(`${BASE}/audit`);
+  await rp.waitForSelector('h1:has-text("Audit log")');
+  check('admin sees the audit log at 375px with no horizontal scroll', !(await rp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+  check('audit table collapses to cards on a phone (header hidden)', await rp.evaluate(() => getComputedStyle(document.querySelector('.card-table thead')).display === 'none'));
+  check('audit rows name the person', (await rp.locator('text=Bob Member').count()) >= 1);
+  await rp.screenshot({ path: join(dir, 'audit-375.png') });
+  await rp.goto(`${BASE}/leave`);
+  await rp.waitForSelector('h1:has-text("Leave")');
+  check('leave page has no horizontal scroll at 375px', !(await rp.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)));
+  check('leave table collapses to cards on a phone', await rp.evaluate(() => getComputedStyle(document.querySelector('.card-table thead')).display === 'none'));
+  await rp.screenshot({ path: join(dir, 'leave-375.png') });
+  await rp.goto(`${BASE}/roster`);
+  await rp.waitForSelector('text=Coverage & rules');
+  const panel = await rp.locator('.insights').textContent();
+  check('roster shows coverage gaps for the unmet STD ≥ 2 target', /coverage gaps?/.test(panel ?? ''), (panel ?? '').slice(0, 80));
+  await rp.screenshot({ path: join(dir, 'roster-375.png') });
+  await admin.ctx.close();
+
+  // planners cannot open the audit log
+  await ap.goto(`${BASE}/audit`);
+  check('a planner is told they have no access to the audit log', (await ap.locator('text=have access to the audit log').count()) === 1);
+  await bob.ctx.close();
+  await ann.ctx.close();
+} finally {
+  await browser.close();
+  try { process.kill(-server.pid); } catch { /* already gone */ }
+}
+const failed = results.filter((r) => !r).length;
+console.log(failed ? `\n${failed} check(s) failed` : `\nAll ${results.length} leave e2e checks passed (screenshots in ${dir})`);
+process.exit(failed ? 1 : 0);
