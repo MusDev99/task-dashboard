@@ -12,6 +12,7 @@ import type { Cell } from "./store";
 import { actorWith, forbidden, requireActor, requireSession } from "./auth";
 import { canSetTaskStatus } from "./access";
 import { recordAudit } from "./audit-log";
+import { notifyUsers } from "./notify";
 
 export type TaskResult<T> = { ok: true; data: T } | { ok: false; errors?: TaskErrors; message?: string };
 
@@ -56,6 +57,7 @@ export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<Wo
     const task: WorkTask = { ...input, id: crypto.randomUUID(), code: nextCode(tasks, config.codePrefix), createdAt: stamp, updatedAt: stamp };
     await appendRow("work_tasks", WORK_TASK_COLUMNS, toRow(task));
     await recordAudit(actor, { action: "create", entity: "task", entityId: task.id, summary: `Created ${task.parentId ? "subtask" : "task"} ${task.code} “${task.title}”` });
+    if (task.assigneeId) await notifyUsers([task.assigneeId], { kind: "task_assigned", title: `You were assigned ${task.code}`, body: task.title, href: "/tasks" }, actor.uid);
     refresh();
     return { ok: true, data: task };
   } catch (e) {
@@ -78,6 +80,7 @@ export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<T
     const found = await updateRowById("work_tasks", WORK_TASK_COLUMNS, id, toRow(task));
     if (!found) return { ok: false, message: "This task no longer exists." };
     await recordAudit(actor, { action: "update", entity: "task", entityId: id, summary: `Edited ${task.code} “${task.title}”` });
+    if (task.assigneeId && task.assigneeId !== current.assigneeId) await notifyUsers([task.assigneeId], { kind: "task_assigned", title: `You were assigned ${task.code}`, body: task.title, href: "/tasks" }, actor.uid);
     refresh();
     return { ok: true, data: task };
   } catch (e) {

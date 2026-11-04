@@ -1,5 +1,5 @@
 import { readTable, type Cell } from "./store";
-import { AUDIT_COLUMNS, LEAVE_COLUMNS, USER_REQUIRED_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
+import { AUDIT_COLUMNS, LEAVE_COLUMNS, NOTIFICATION_COLUMNS, USER_REQUIRED_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
 import type { User } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
@@ -8,6 +8,7 @@ import { MONTH_RE } from "./roster-dates";
 import { parseAccess } from "./access";
 import { parseAuditRows, type AuditEntry } from "./audit";
 import { isLeaveStatus, type LeaveRequest } from "./leave";
+import { parseNotifications, type Notification } from "./notifications";
 
 // Tables: see lib/schema.ts.
 
@@ -215,5 +216,16 @@ export async function loadLeaveRequests(): Promise<{ requests: LeaveRequest[]; e
   } catch (error) {
     console.error("Error loading leave requests:", error);
     return { requests: [], error: true };
+  }
+}
+
+/** One person's notifications, newest first (a missing tab = none yet), with a load-failure flag. */
+export async function loadNotifications(userId: string): Promise<{ notifications: Notification[]; error: boolean }> {
+  try {
+    const rows = await readOptionalTable("notifications", NOTIFICATION_COLUMNS);
+    return { notifications: parseNotifications(rows, userId), error: false };
+  } catch (error) {
+    console.error("Error loading notifications:", error);
+    return { notifications: [], error: true };
   }
 }

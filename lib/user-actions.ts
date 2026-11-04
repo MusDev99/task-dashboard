@@ -130,6 +130,9 @@ export async function deleteUser(id: string): Promise<ActionResult<null>> {
     await deleteRowsWhere("leave_requests", "userId", id).catch((e) => {
       if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e; // tab not created yet
     });
+    await deleteRowsWhere("notifications", "userId", id).catch((e) => {
+      if (!String(e).includes("not found") && !String(e).includes("Unable to parse range")) throw e; // tab not created yet
+    });
     // Work tasks are kept but unassigned (the work still needs doing).
     await unassignWorkTasks(id);
     // Team memberships go; teams they led keep going without a lead.

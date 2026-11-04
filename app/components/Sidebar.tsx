@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { logout } from "../../lib/auth-actions";
+import { getUnreadCount } from "../../lib/notification-actions";
 import Avatar from "./ui/Avatar";
 import { useFocusTrap } from "./ui/useFocusTrap";
 import { CloseIcon } from "./ui/Icons";
@@ -96,6 +97,16 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
     ),
   },
   {
+    label: "Notifications",
+    href: "/notifications",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+      </svg>
+    ),
+  },
+  {
     label: "Settings",
     cap: "settings.view",
     href: "/settings",
@@ -136,6 +147,31 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
   const [open, setOpen] = useState(false);
   const aside = useRef<HTMLElement>(null);
 
+  // Unread badge: fetched on load and navigation, when the tab regains focus, and every minute. The inbox page
+  // tells us right away when it changes something ("notifications:changed").
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (pathname.startsWith("/login")) return;
+    let live = true;
+    const refresh = () => getUnreadCount().then((n) => live && setUnread(n)).catch(() => undefined);
+    const onChanged = (e: Event) => {
+      const n = (e as CustomEvent<number | undefined>).detail;
+      if (typeof n === "number") setUnread(n);
+      else refresh();
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("notifications:changed", onChanged);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("notifications:changed", onChanged);
+    };
+  }, [pathname]);
+  const badge = unread > 99 ? "99+" : String(unread);
+
   // Close the drawer on navigation.
   useEffect(() => setOpen(false), [pathname]);
 
@@ -162,6 +198,12 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
         </button>
         <span className="brand-mark brand-mark-sm" aria-hidden="true">⚡</span>
         <span className="brand-name">WorkForce</span>
+        <Link href="/notifications" className="topbar-bell" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          {unread > 0 && <span className="nav-badge" aria-hidden="true">{badge}</span>}
+        </Link>
       </header>
 
       {open && <div className="sidebar-backdrop" onClick={() => setOpen(false)} aria-hidden="true" />}
@@ -189,6 +231,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
                   <Link href={item.href} className={`sidebar-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
                     <span className="sidebar-link-icon">{item.icon}</span>
                     <span>{item.label}</span>
+                    {item.href === "/notifications" && unread > 0 && <span className="nav-badge" aria-label={`${unread} unread`}>{badge}</span>}
                   </Link>
                 </li>
               );

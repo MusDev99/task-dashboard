@@ -2,13 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { appendRow, ensureTab, readTable, updateRowById, upsertRowsById } from "./store";
-import { loadLeaveRequests, loadTeams } from "./actions";
+import { loadLeaveRequests, loadTeams, readUsers } from "./actions";
 import { getShiftConfig } from "./shifts";
 import { LEAVE_COLUMNS, ROSTER_COLUMNS } from "./schema";
 import { MAX_LEAVE_DAYS, NOTE_MAX, canDecideLeave, canTransition, cleanLeaveInput, datesBetween, validateLeaveInput, type LeaveErrors, type LeaveInput, type LeaveRequest } from "./leave";
 import { ledUserIds } from "./access";
 import { actorWith, forbidden } from "./auth";
 import { recordAudit } from "./audit-log";
+import { notifyUsers } from "./notify";
+import { leaveApprovers } from "./notifications";
 import { rosterId, todayIn } from "./roster-dates";
 
 export type LeaveResult<T = null> = { ok: true; data: T } | { ok: false; errors?: LeaveErrors; message?: string };
@@ -45,6 +47,18 @@ export async function requestLeave(raw: Partial<LeaveInput>): Promise<LeaveResul
     await appendRow("leave_requests", LEAVE_COLUMNS, toRow(request));
     const n = datesBetween(input.startDate, input.endDate).length;
     await recordAudit(actor, { action: "create", entity: "leave", entityId: request.id, summary: `Requested ${input.code} ${input.startDate} to ${input.endDate} (${n} day${n === 1 ? "" : "s"})` });
+    // Tell the people who can decide. Best effort: never fails the request itself.
+    try {
+      const [users, teams] = await Promise.all([readUsers(), loadTeams()]);
+      const me = users.find((u) => u.id === actor.uid);
+      await notifyUsers(
+        leaveApprovers(actor.uid, users, teams.error ? [] : teams.teams, teams.error ? [] : teams.members),
+        { kind: "leave_requested", title: `${(me?.name ?? "Someone").replace(/\s-\s*$/, "")} requested leave`, body: `${input.code} · ${input.startDate} to ${input.endDate} (${n} day${n === 1 ? "" : "s"})`, href: "/leave" },
+        actor.uid,
+      );
+    } catch (e) {
+      console.error("leave notification failed", e);
+    }
     refresh();
     return { ok: true, data: request };
   } catch (e) {
@@ -118,6 +132,11 @@ export async function decideLeave(id: string, decision: "approved" | "rejected",
       action: "status", entity: "leave", entityId: id,
       summary: `${decision === "approved" ? "Approved" : "Rejected"} ${r.code} ${r.startDate} to ${r.endDate}${decision === "approved" ? ` (${days} roster day${days === 1 ? "" : "s"}${replaced ? `, ${replaced} replaced a shift` : ""})` : ""}`,
     });
+    await notifyUsers(
+      [r.userId],
+      { kind: "leave_decided", title: `Your leave was ${decision}`, body: `${r.code} · ${r.startDate} to ${r.endDate}${note ? ` · ${note}` : ""}`, href: "/leave" },
+      actor.uid,
+    );
     refresh();
     return { ok: true, data: { days, replaced } };
   } catch (e) {

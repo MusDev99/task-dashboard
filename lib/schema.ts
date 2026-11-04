@@ -34,5 +34,8 @@ export const TEAM_MEMBER_COLUMNS = ["id", "teamId", "userId", "addedAt"] as cons
 // Leave requests (one row per request; approving one writes the leave code into the roster for each day).
 export const LEAVE_COLUMNS = ["id", "userId", "startDate", "endDate", "code", "note", "status", "decidedBy", "decidedAt", "decisionNote", "createdAt", "updatedAt"] as const;
 
+// In-app notifications, one row per recipient (a person only ever reads or marks their own).
+export const NOTIFICATION_COLUMNS = ["id", "userId", "kind", "title", "body", "href", "createdAt", "readAt"] as const;
+
 // Append-only change history (admins read it on /audit). Never edited or deleted by the app.
 export const AUDIT_COLUMNS = ["id", "at", "actorId", "actorLevel", "action", "entity", "entityId", "summary"] as const;

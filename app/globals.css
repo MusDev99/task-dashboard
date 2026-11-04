@@ -1324,3 +1324,21 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
   .card-table td.card-actions { padding-top: 0.6rem; }
   .card-table tbody tr:hover { background: transparent; }
 }
+
+/* Notifications: unread badge (menu item + phone top bar) and the inbox list */
+.nav-badge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--radius-full); background: var(--accent-pink); color: #fff; font-size: 0.7rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+.topbar-bell { position: relative; margin-left: auto; display: inline-flex; align-items: center; justify-content: center; min-width: var(--touch); min-height: var(--touch); color: var(--text-primary); border-radius: var(--radius-md); }
+.topbar-bell:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.topbar-bell .nav-badge { position: absolute; top: 4px; right: 2px; margin: 0; }
+.inbox { display: grid; }
+.inbox-item { display: grid; grid-template-columns: 12px 1fr auto; gap: 0.75rem; align-items: start; width: 100%; padding: 0.9rem 1rem; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--border-subtle); color: inherit; cursor: pointer; min-height: var(--touch); font: inherit; }
+.inbox-item:last-child { border-bottom: 0; }
+.inbox-item:hover { background: var(--bg-card-hover); }
+.inbox-item:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.inbox-dot { width: 8px; height: 8px; margin-top: 0.45rem; border-radius: 50%; background: transparent; }
+.inbox-item.is-unread .inbox-dot { background: var(--accent-pink); }
+.inbox-title { display: block; font-weight: 600; color: var(--text-primary); }
+.inbox-item:not(.is-unread) .inbox-title { font-weight: 500; color: var(--text-secondary); }
+.inbox-body { display: block; margin-top: 0.15rem; font-size: 0.85rem; color: var(--text-secondary); overflow-wrap: anywhere; }
+.inbox-time { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; }
+@media (min-width: 769px) { .topbar-bell { display: none; } }
