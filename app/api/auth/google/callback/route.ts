@@ -117,7 +117,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const res = finish(NextResponse.redirect(new URL(safeNext(saved.next), base), 302));
+  // Members land on their own schedule unless they were heading somewhere specific.
+  const landing = match.user.access === "member" ? "/me" : "/";
+  const res = finish(NextResponse.redirect(new URL(safeNext(saved.next === "/" ? null : saved.next, landing), base), 302));
   res.cookies.set(SESSION_COOKIE, await createSessionToken(cfg.secret, { uid: match.user.id, email: match.user.email }), {
     httpOnly: true, secure: production, sameSite: "lax", path: "/", maxAge: SESSION_TTL_SECONDS,
   });
