@@ -1,12 +1,12 @@
 # WM product backlog
 
-Owner: Mustaqeem · Maintained with the `product-owner` skill · Last groomed: 2026-10-31
+Owner: Mustaqeem · Maintained with the `product-owner` skill · Last groomed: 2026-11-02
 RICE = Reach (people/month) × Impact (0.5–3) × Confidence × ÷ Effort (person-weeks). Reach assumes ~40 active users (⚠️ assumption; replace with the real count).
 
 | # | Item | Reach | Impact | Conf. | Effort | RICE | Status | Brief |
 |---|---|---|---|---|---|---|---|---|
-| 1 | **Role-based access (access levels, team-scoped leads)** | 40 | 3 | 90% | 0.5 *(slice 1)* / 2 *(all)* | 216 / 54 | ✅ ready for dev | [rbac](briefs/rbac.md) |
-| 2 | My schedule (member home, 14 days, ICS) | 40 | 2 | 80% | 0.5 | 128 | 💡 blocked by #1 for member rollout | — |
+| 1 | **Role-based access (access levels, team-scoped leads)** | 40 | 3 | 90% | 0.5 *(slice 1)* / 2 *(all)* | 216 / 54 | 🎉 shipped (PRs 14–16) | [rbac](briefs/rbac.md) |
+| 2 | My schedule (member home, 14 days, ICS) | 40 | 2 | 80% | 0.5 | 128 | 🚧 slice 1 built | [my-schedule](briefs/my-schedule.md) |
 | 3 | Coverage targets + heat strip on Roster | 5 | 3 | 80% | 1.5 | 8 | 💡 | — |
 | 4 | Leave requests & approval | 40 | 3 | 80% | 3 | 32 | 💡 needs #1 | — |
 | 5 | Shift patterns / rotation fill | 5 | 3 | 80% | 1.5 | 8 | 💡 | — |

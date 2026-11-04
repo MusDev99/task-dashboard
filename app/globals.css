@@ -1292,3 +1292,31 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
   .smart-card { flex-wrap: wrap; }
   .smart-pick { flex: 1 0 100%; }
 }
+
+/* ─── My schedule (/me) — phone first: today card, then days, then tasks; side by side on desktop ─── */
+.my-today { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1rem 1.1rem; margin-bottom: 1rem; }
+.my-today h2 { margin: 0 0 0.4rem; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.my-today-line { display: flex; align-items: center; gap: 0.6rem; margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+.my-summary { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+.my-columns { display: grid; gap: 1rem; }
+.my-section-title { display: flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0.9rem 1rem 0.5rem; font-size: 1rem; }
+.my-day-list, .my-task-list { list-style: none; margin: 0; padding: 0 0 0.5rem; }
+.my-day { display: grid; grid-template-columns: 6.5rem 1fr auto; align-items: center; gap: 0.75rem; min-height: var(--touch); padding: 0.4rem 1rem; border-top: 1px solid var(--border-subtle); font-size: 0.9rem; }
+.my-day.week-break { grid-template-areas: "week week week" "date what chip"; grid-template-rows: auto 1fr; }
+.my-day.week-break .my-week { grid-area: week; }
+.my-week { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding-top: 0.4rem; }
+.my-day-date { color: var(--text-secondary); white-space: nowrap; }
+.my-day-date b { color: var(--text-primary); margin-right: 0.25rem; }
+.my-day-what { color: var(--text-primary); min-width: 0; }
+.my-day.is-weekend .my-day-date { color: var(--text-muted); }
+.my-day.is-today { background: color-mix(in srgb, var(--accent-indigo) 10%, transparent); box-shadow: inset 3px 0 0 var(--accent-indigo); }
+.my-task { display: flex; align-items: center; gap: 0.75rem; min-height: var(--touch); padding: 0.6rem 1rem; border-top: 1px solid var(--border-subtle); }
+.my-task-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.my-task-title { color: var(--text-primary); text-decoration: none; font-weight: 500; overflow-wrap: anywhere; }
+.my-task-title:hover { text-decoration: underline; }
+.my-task-main small { color: var(--text-muted); font-size: 0.78rem; }
+.my-task .select-sm { flex-shrink: 0; max-width: 9.5rem; min-height: var(--touch); }
+@media (min-width: 900px) {
+  .my-columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .my-task .select-sm { min-height: 0; }
+}

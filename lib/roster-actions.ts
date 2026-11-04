@@ -15,6 +15,7 @@ import { ledUserIds, rosterRefused, rosterScoped } from "./access";
 const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "");
 const refresh = () => {
   revalidatePath("/roster");
+  revalidatePath("/me");
   revalidatePath("/"); // dashboard whereabouts
 };
 const fail = (e: unknown): { ok: false; message: string } => {
