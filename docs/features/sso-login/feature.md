@@ -59,9 +59,9 @@
 ### 3.4 Laws of UX
 | Law | Applied how |
 |---|---|
-| Hick | one primary action on the page: Sign in with Google |
+| Hick | one primary action on the page: Continue with Google |
 | Fitts | full-width 44px button and WhatsApp contact button |
-| Jakob | standard "Sign in with Google" pattern |
+| Jakob | standard "Continue with Google" pattern |
 | Von Restorff | one filled accent button; the banner uses the warning tone, red stays for errors |
 | Tesler | the system binds `googleId` automatically; nobody types ids |
 | Peak-End | returns the person to the page they asked for; clear message and next step when refused |

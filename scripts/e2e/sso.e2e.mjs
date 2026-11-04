@@ -67,7 +67,7 @@ try {
     const { ctx, page } = await newPage(browser, vp);
     await page.goto(`${BASE}/users`);
     check(`[${label}] signed-out /users goes to /login`, page.url().includes('/login?next=%2Fusers'), page.url());
-    await page.click('text=Sign in with Google');
+    await page.click('text=Continue with Google');
     await page.waitForURL(`${BASE}/users`, { timeout: 15000 }).catch(() => console.log('stuck at', page.url()));
     const c = await sessionCookie(ctx);
     check(`[${label}] registered user is signed in and returned to /users`, !!c && c.httpOnly && c.sameSite === 'Lax');
@@ -82,7 +82,7 @@ try {
   {
     const { ctx, page } = await newPage(browser, { width: 375, height: 740 });
     await page.goto(`${BASE}/login`);
-    await page.click('text=Sign in with Google');
+    await page.click('text=Continue with Google');
     await page.waitForURL(/\/login\?e=not_registered/, { timeout: 15000 });
     const banner = await page.locator('.login-refused').textContent();
     check('unknown email: banner names the account', banner.includes('nobody@example.com') && banner.includes('isn\'t registered'));
@@ -101,7 +101,7 @@ try {
   {
     const { ctx, page } = await newPage(browser, { width: 1280, height: 800 });
     await page.goto(`${BASE}/login`);
-    await page.click('text=Sign in with Google');
+    await page.click('text=Continue with Google');
     await page.waitForURL(/\/login\?e=inactive/, { timeout: 15000 });
     check('deactivated user: banner + no session', (await page.locator('.login-refused').textContent()).includes('deactivated') && !(await sessionCookie(ctx)));
     await ctx.close();
@@ -112,7 +112,7 @@ try {
   {
     const { ctx, page } = await newPage(browser, { width: 1280, height: 800 });
     await page.goto(`${BASE}/login`);
-    await page.click('text=Sign in with Google');
+    await page.click('text=Continue with Google');
     await page.waitForURL(/\/login\?e=error/, { timeout: 15000 });
     check('replayed/wrong nonce is rejected', !(await sessionCookie(ctx)));
     const r = await fetch(`${BASE}/api/auth/google/callback?code=abc&state=forged`, { redirect: 'manual' });
@@ -129,7 +129,7 @@ try {
   {
     const { ctx, page } = await newPage(browser, { width: 1280, height: 800 });
     await page.goto(`${BASE}/login`);
-    await page.click('text=Sign in with Google');
+    await page.click('text=Continue with Google');
     await page.waitForURL(/\/login\?e=unavailable/, { timeout: 20000 });
     check('Data-store outage shows "unavailable", not "not registered"', !(await page.locator('.login-refused').count()) && !(await sessionCookie(ctx)));
     await ctx.close();
