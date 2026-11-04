@@ -18,6 +18,7 @@ const nowStamp = () => new Date().toISOString().replace("T", " ").replace("Z", "
 const refresh = () => {
   revalidatePath("/tasks");
   revalidatePath("/");
+  revalidatePath("/me");
 };
 const fail = (e: unknown): { ok: false; message: string } => {
   console.error(e);

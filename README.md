@@ -8,6 +8,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 
 | Area | Route | What it does |
 |---|---|---|
+| **My schedule** | `/me` | Your own next 14 days (shift and times, leave, not scheduled; grouped by week, with working days and hours) and your open tasks and subtasks, overdue first, with a status select. Members land here after signing in. |
 | **Dashboard** | `/` | **Daily Whereabouts** for any day: who is on which shift, who is on leave, who has no roster entry. Filter by name/ID/code and copy a plain-text summary for chat. |
 | **Roster** | `/roster` | Two views (choice kept in `?view=`): **Day** (default on phones) — swipeable day strip, every person as a large tap row, per-code head-count, tap a row to set the code in a bottom sheet, *Set for all shown*; **Month** (default on desktop) — grid of every active person, click or drag cells to assign a shift or leave, `+` above a date to assign everyone. **Clear schedule** to bulk-remove, **Export / Upload CSV** (in the ⋮ menu on phones). One record per person per day. |
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views (on phones: task cards, swipeable lanes and an agenda). Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. **Smart assign (AI pilot)** in the task drawer suggests up to 3 people with reasons (roster availability, open workload, past tasks); Claude re-ranks and explains when `ANTHROPIC_API_KEY` is set, otherwise rules answer. It only suggests: you press *Assign*. |
@@ -147,6 +148,7 @@ Keep **Settings → General → Automatically delete head branches** on as well;
 
 ## Changelog
 
+- **Unreleased · My schedule**: new `/me` page (first tab) with today's shift, the next 14 days and your open tasks with a quick status change; members land on it after signing in. Teams moved from the phone tab bar to the menu.
 - **Unreleased · Access levels, part 3**: on the Roster, Leads start on a **My teams** filter; rows of people outside their teams show a lock and *Not in your teams* and don't edit; *assign all* skips them and says how many.
 - **Unreleased · Access levels, part 2**: screens match each level: menu items hidden, *no access* page for Users/Settings, view-only Settings (Planners), Users (Planners, Leads), Roster and task drawer (Members); Leads edit only details of teams they lead; Clear/Upload roster only for Planners and Admins.
 - **Unreleased · Branch cleanup**: `branch-policy.yml` checks branch names and Conventional Commit PR titles; `branch-cleanup.yml` deletes a PR's branch after it is merged.

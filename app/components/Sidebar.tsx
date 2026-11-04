@@ -20,6 +20,17 @@ interface SidebarUser {
 
 const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; icon: React.ReactNode }[] = [
   {
+    label: "My schedule",
+    tab: true,
+    href: "/me",
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+      </svg>
+    ),
+  },
+  {
     label: "Dashboard",
     tab: true,
     href: "/",
@@ -72,7 +83,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Teams",
-    tab: true,
+    // Not in the bottom bar (max 5 tabs on phones); reachable from the menu.
     href: "/teams",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
