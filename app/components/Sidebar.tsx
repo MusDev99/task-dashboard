@@ -19,9 +19,12 @@ interface SidebarUser {
   access: AccessLevel | null;
 }
 
-const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; icon: React.ReactNode }[] = [
+type Tone = "indigo" | "violet" | "pink" | "amber" | "emerald" | "neutral";
+
+const navItems: { label: string; tone: Tone; href: string; tab?: boolean; cap?: Capability; icon: React.ReactNode }[] = [
   {
     label: "My schedule",
+    tone: "indigo",
     tab: true,
     href: "/me",
     icon: (
@@ -33,6 +36,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Dashboard",
+    tone: "violet",
     tab: true,
     href: "/",
     icon: (
@@ -46,6 +50,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Tasks",
+    tone: "amber",
     tab: true,
     href: "/tasks",
     icon: (
@@ -57,6 +62,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Roster",
+    tone: "indigo",
     tab: true,
     href: "/roster",
     icon: (
@@ -70,6 +76,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Users",
+    tone: "pink",
     tab: true,
     cap: "users.view",
     href: "/users",
@@ -84,6 +91,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Teams",
+    tone: "violet",
     // Not in the bottom bar (max 5 tabs on phones); reachable from the menu.
     href: "/teams",
     icon: (
@@ -98,6 +106,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Leave",
+    tone: "emerald",
     href: "/leave",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -109,6 +118,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Notifications",
+    tone: "pink",
     href: "/notifications",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,6 +129,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Settings",
+    tone: "neutral",
     cap: "settings.view",
     href: "/settings",
     icon: (
@@ -130,6 +141,7 @@ const navItems: { label: string; href: string; tab?: boolean; cap?: Capability; 
   },
   {
     label: "Audit log",
+    tone: "neutral",
     cap: "audit.view",
     href: "/audit",
     icon: (
@@ -208,7 +220,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
           </svg>
         </button>
         <span className="brand-mark brand-mark-sm" aria-hidden="true">⚡</span>
-        <span className="brand-name">WorkForce</span>
+        <span className="brand-name">Work<span>Force</span></span>
         <Link href="/notifications" className="topbar-bell" aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
@@ -224,7 +236,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
         <div className="sidebar-brand">
           <span className="brand-mark" aria-hidden="true">⚡</span>
           <div>
-            <div className="brand-name">WorkForce</div>
+            <div className="brand-name">Work<span>Force</span></div>
             <div className="brand-tagline">Resource &amp; task planning</div>
           </div>
           <button type="button" className="icon-btn sidebar-close" onClick={() => setOpen(false)} aria-label="Close menu">
@@ -239,7 +251,7 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
               const active = isActive(item.href);
               return (
                 <li key={item.href}>
-                  <Link href={item.href} className={`sidebar-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
+                  <Link href={item.href} className={`sidebar-link tone-${item.tone} ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
                     <span className="sidebar-link-icon">{item.icon}</span>
                     <span>{item.label}</span>
                     {item.href === "/notifications" && unread > 0 && <span className="nav-badge" aria-label={`${unread} unread`}>{badge}</span>}
@@ -272,8 +284,8 @@ export default function Sidebar({ user }: { user: SidebarUser | null }) {
         {items.filter((i) => i.tab).map((item) => {
           const active = isActive(item.href);
           return (
-            <Link key={item.href} href={item.href} className={`bottom-nav-link ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
-              {item.icon}
+            <Link key={item.href} href={item.href} className={`bottom-nav-link tone-${item.tone} ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
+              <span className="bottom-nav-icon">{item.icon}</span>
               <span>{item.label === "Dashboard" ? "Home" : item.label}</span>
             </Link>
           );

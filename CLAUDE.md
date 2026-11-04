@@ -65,6 +65,8 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - **Peak-End**: finish every action with a clear outcome (toast naming what happened).
 - **Aesthetic-Usability**: consistent tokens, spacing and radius; no one-off styles.
 
+**App shell look** (sidebar, top bar, bottom tabs, sign-in page share it): every nav item in `Sidebar.tsx` carries a `tone` (`indigo | violet | pink | amber | emerald | neutral`) that sets `--tone` through the `tone-*` classes in `globals.css`; icons sit in `--tone`-tinted tiles, the active link is outlined in its tone, the active phone tab gets a tinted pill (`.bottom-nav-icon`). New menu items must pick a tone. The wordmark is `Work<span>Force</span>` (the span is the accent). Use `--text-secondary`, not `--text-muted`, for any text people need to read.
+
 **Style**: dark theme, tokens only from `app/globals.css` (`--bg-*`, `--text-*`, `--accent-*`, `--radius-*`, `--danger`). Use the shared classes (`.btn`, `.btn-primary`, `.btn-danger`, `.icon-btn`, `.input`, `.field`, `.select`, `.data-table`, `.drawer`, `.modal`, `.toast`, `.badge`, `.stat-card`, `.filter-pill`, `.pagination`) — add new classes to `globals.css` rather than long inline `style` objects. No raw hex colours in components.
 
 **Interaction**: forms open in a side drawer (add/edit), validate inline on blur + submit, focus the first invalid field, keep input on server error, confirm if closing with unsaved changes. Destructive actions need a confirm dialog that states exactly what will be removed; **Cancel is the default focus**. Table/filter/sort/page state is mirrored to the URL via `history.replaceState` (shareable, no server round-trip).
