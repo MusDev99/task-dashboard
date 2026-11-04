@@ -3,7 +3,7 @@
 // (scripts/e2e/fake-google.cjs). Needs `npm run build` first and Playwright (preinstalled in Claude Code
 // cloud sessions; elsewhere: `npm i -D playwright`). Run: node scripts/e2e/sso.e2e.mjs
 import { spawn, execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';

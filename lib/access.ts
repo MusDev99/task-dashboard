@@ -21,10 +21,11 @@ export type Capability =
   | "users.view"
   | "users.edit" // includes access levels
   | "settings.view"
-  | "settings.edit";
+  | "settings.edit"
+  | "audit.view"; // read the change history
 
 const MATRIX: Record<AccessLevel, readonly Capability[]> = {
-  admin: ["roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "users.edit", "settings.view", "settings.edit"],
+  admin: ["roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "users.edit", "settings.view", "settings.edit", "audit.view"],
   planner: ["roster.edit", "roster.bulk", "tasks.edit", "tasks.statusOwn", "teams.manage", "teams.editLed", "users.view", "settings.view"],
   lead: ["roster.edit", "tasks.edit", "tasks.statusOwn", "teams.editLed", "users.view"],
   member: ["tasks.statusOwn"],

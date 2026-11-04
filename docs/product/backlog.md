@@ -11,6 +11,7 @@ RICE = Reach (people/month) × Impact (0.5–3) × Confidence × ÷ Effort (pers
 | 4 | Leave requests & approval | 40 | 3 | 80% | 3 | 32 | 💡 needs #1 | — |
 | 5 | Shift patterns / rotation fill | 5 | 3 | 80% | 1.5 | 8 | 💡 | — |
 | 6 | Rest-rule & fairness warnings | 5 | 2 | 80% | 1.5 | 5 | 💡 | — |
+| 7 | **Audit log** (+ tasks CSV export, lint repair) | 5 | 1 | 90% | 0.3 | 15 | ✅ built, awaiting browser pass | [audit-log](../features/audit-log/feature.md) |
 
 Rank by RICE first, then dependencies: #1 unlocks #2 and #4 for members. Planner-only items (#3, #5) have small reach but high value per planner, so re-score them after the user count is confirmed.
 

@@ -11,6 +11,7 @@ import type { Availability, TaskInput, WorkTask } from "../app/tasks/types";
 import type { Cell } from "./store";
 import { actorWith, forbidden, requireActor, requireSession } from "./auth";
 import { canSetTaskStatus } from "./access";
+import { recordAudit } from "./audit-log";
 
 export type TaskResult<T> = { ok: true; data: T } | { ok: false; errors?: TaskErrors; message?: string };
 
@@ -44,7 +45,7 @@ function nextCode(tasks: WorkTask[], prefix: string): string {
 }
 
 export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
-  const { denied } = await actorWith("tasks.edit", "createTask");
+  const { actor, denied } = await actorWith("tasks.edit", "createTask");
   if (denied) return denied;
   try {
     const { users, config, tasks } = await context();
@@ -54,6 +55,7 @@ export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<Wo
     const stamp = nowStamp();
     const task: WorkTask = { ...input, id: crypto.randomUUID(), code: nextCode(tasks, config.codePrefix), createdAt: stamp, updatedAt: stamp };
     await appendRow("work_tasks", WORK_TASK_COLUMNS, toRow(task));
+    await recordAudit(actor, { action: "create", entity: "task", entityId: task.id, summary: `Created ${task.parentId ? "subtask" : "task"} ${task.code} “${task.title}”` });
     refresh();
     return { ok: true, data: task };
   } catch (e) {
@@ -62,7 +64,7 @@ export async function createTask(raw: Partial<TaskInput>): Promise<TaskResult<Wo
 }
 
 export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<TaskResult<WorkTask>> {
-  const { denied } = await actorWith("tasks.edit", "updateTask");
+  const { actor, denied } = await actorWith("tasks.edit", "updateTask");
   if (denied) return denied;
   try {
     const { users, config, tasks } = await context();
@@ -75,6 +77,7 @@ export async function updateTask(id: string, raw: Partial<TaskInput>): Promise<T
     const task: WorkTask = { ...current, ...input, updatedAt: nowStamp() };
     const found = await updateRowById("work_tasks", WORK_TASK_COLUMNS, id, toRow(task));
     if (!found) return { ok: false, message: "This task no longer exists." };
+    await recordAudit(actor, { action: "update", entity: "task", entityId: id, summary: `Edited ${task.code} “${task.title}”` });
     refresh();
     return { ok: true, data: task };
   } catch (e) {
@@ -94,6 +97,7 @@ export async function setTaskStatus(id: string, status: string): Promise<TaskRes
     if (!def || (!def.active && current.status !== status)) return { ok: false, message: "That status isn't available." };
     const task: WorkTask = { ...current, status, updatedAt: nowStamp() };
     await updateRowById("work_tasks", WORK_TASK_COLUMNS, id, toRow(task));
+    await recordAudit(actor, { action: "status", entity: "task", entityId: id, summary: `${task.code} status ${current.status} → ${status}` });
     refresh();
     return { ok: true, data: task };
   } catch (e) {
@@ -103,14 +107,16 @@ export async function setTaskStatus(id: string, status: string): Promise<TaskRes
 
 /** Deletes a task and its subtasks (subtasks first, so none is ever orphaned). */
 export async function deleteTask(id: string): Promise<TaskResult<{ subtasksDeleted: number }>> {
-  const { denied } = await actorWith("tasks.edit", "deleteTask");
+  const { actor, denied } = await actorWith("tasks.edit", "deleteTask");
   if (denied) return denied;
   try {
     const { tasks } = await context();
     if (!tasks.some((t) => t.id === id)) return { ok: false, message: "This task no longer exists." };
+    const gone = tasks.find((t) => t.id === id)!;
     const subIds = tasks.filter((t) => t.parentId === id).map((t) => t.id);
     const subtasksDeleted = await deleteRowsByIds("work_tasks", subIds);
     await deleteRowsByIds("work_tasks", [id]);
+    await recordAudit(actor, { action: "delete", entity: "task", entityId: id, summary: `Deleted ${gone.code} “${gone.title}”${subtasksDeleted ? ` and ${subtasksDeleted} subtask${subtasksDeleted === 1 ? "" : "s"}` : ""}` });
     refresh();
     return { ok: true, data: { subtasksDeleted } };
   } catch (e) {

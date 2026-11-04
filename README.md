@@ -13,6 +13,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | **Tasks** | `/tasks` | **List Tree**, **Kanban** (drag between statuses) and **Calendar** views (on phones: task cards, swipeable lanes and an agenda). Generated code (`TSK-0001`), story points with complexity, one assignee, labels, optional start/due dates, links (Jira, GitLab merge requests, GitHub or any URL), and one level of subtasks. The assignee picker shows roster availability for the task's dates and open workload; unavailable people get a warning but can still be assigned. **Smart assign (AI pilot)** in the task drawer suggests up to 3 people with reasons (roster availability, open workload, past tasks); Claude re-ranks and explains when `ANTHROPIC_API_KEY` is set, otherwise rules answer. It only suggests: you press *Assign*. |
 | **Users** | `/users` | Admin table/grid (name, location, role, status, joined) with stats, search, filters (status, location), sorting, pagination, and add/edit/delete in a drawer, including each person's **Access level** (Admin, Planner, Lead, Member). Deleting a user also removes their roster rows and unassigns their work tasks. |
 | **Teams** | `/teams` | Group registered users into teams (name, description, colour, optional lead). A person can be in several teams. Cards (lead + members) or table with stats, search, member filter, sorting and pagination; add/edit in a two-step drawer (details → members, crown to pick the lead). Teams power the **team filter** on Roster and Tasks and narrow the task assignee picker (tasks still have one personal assignee, never a team). |
+| **Audit log** | `/audit` | Admin-only, read-only history of who changed what (tasks, roster, users and access levels, teams, settings), newest first, with search, area filter and pagination. Written after each successful change; a logging failure never blocks the change itself. |
 | **Settings** | `/settings` | **Operational Settings** (no code changes needed): *General* (time zone, task code prefix, week start, max labels/links), *Work shifts*, *Leave types*, *Locations*, *Roles*, *Task statuses*, *Story points*. Items in use can't be deleted; deactivate them instead. |
 
 ## Data store setup
@@ -31,6 +32,7 @@ A resource-management system for small and medium teams: **plan work capacity fr
 | `work_tasks` | Tasks and subtasks (`parentId` set = subtask) | automatically on first task |
 | `teams` | Teams (id, name, description, leadId, color) | automatically on first team |
 | `team_members` | One row per team member (`id = teamId_userId`) | automatically on first team |
+| `audit_log` | Append-only change history (who, when, area, action, summary) | automatically on first change |
 | `roster_codes` | Work shifts + leave types | `migrate:settings` or first Settings save |
 | `locations`, `roles` | Managed lists used by users | `migrate:settings` or first Settings save |
 | `task_statuses`, `story_points`, `app_settings` | Task workflow + general settings | `migrate:settings` or first Settings save |
@@ -93,10 +95,10 @@ The whole app is private. Every page except `/login` needs a Google sign-in, and
 
 ## Project structure
 
-- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `teams/`, `settings/`, `whereabouts/`, `manifest.ts` (PWA manifest)
+- `app/` routes (feature code lives next to its route): `page.tsx` (dashboard), `roster/`, `tasks/`, `users/`, `teams/`, `settings/`, `audit/`, `whereabouts/`, `manifest.ts` (PWA manifest)
 - `public/sw.js` service worker (caches build assets + icons only), `public/offline.html`, `public/icons/` app icons
 - `app/components/` shared UI (sidebar + mobile top bar/bottom tabs, `ServiceWorker.tsx` registration, `ui/` primitives: drawer helpers, menus, dialogs, toasts, pagination)
-- `lib/` server logic: `store.ts` (data-store client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), `claude.ts` (server-only Claude API client), `assignee-data.ts` (availability read shared by the picker and Smart assign), pure helpers (`smart-assign.ts`, `teams.ts`, `team-validation.ts`, `capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
+- `lib/` server logic: `store.ts` (data-store client), `actions.ts` (reads), `*-actions.ts` (server actions), `*-validation.ts`, `schema.ts`, `settings.ts` / `shifts.ts` / `task-config.ts` (settings readers), `claude.ts` (server-only Claude API client), `assignee-data.ts` (availability read shared by the picker and Smart assign), `audit.ts` (pure audit-log rules, tested) + `audit-log.ts` (best-effort recorder), pure helpers (`smart-assign.ts`, `teams.ts`, `team-validation.ts`, `capacity.ts`, `whereabouts.ts`, `links.ts`, `roster-dates.ts`)
 - `json/` seed defaults only (settings live in the data store once migrated)
 - `scripts/` one-off seed and migration scripts
 - `.claude/skills/appsec-review/` security-review skill (`SKILL.md` checklist + `scan.sh` automated scan); `docs/` review reports
@@ -118,6 +120,7 @@ Every person has one access level (separate from their job **Role**). The server
 | Teams | ✅ | ✅ | edit details of teams they lead | — |
 | Users and access levels | ✅ | — | — | — |
 | Settings | ✅ | view only | — | — |
+| Audit log | ✅ | — | — | — |
 
 Screens follow the level: links you can't use are hidden from the menu, Users and Settings show a *no access* page to people without access, Settings is view-only for Planners, Users is view-only for Planners and Leads, Leads edit only the details of teams they lead and open the Roster on **My teams** (rows of people outside their teams are locked and labelled), and Members see the roster and tasks view-only (they can still move tasks assigned to them). New people start as **Member**. There must always be one active Admin. A change of level applies to the person's next action. Run `npm run migrate:settings` once after upgrading (until then everyone keeps full access).
 
@@ -147,6 +150,7 @@ Keep **Settings → General → Automatically delete head branches** on as well;
 
 ## Changelog
 
+- **Unreleased · Audit log, tasks export, lint**: admins get a read-only **Audit log** (`/audit`, new `audit_log` table) recording changes to tasks, roster, users/access, teams and settings; **Export CSV** on Tasks (current filters, with subtasks; formula-safe); `npm run lint` works again (ESLint flat config for Next 16) and is part of `npm run verify`. Remaining React-rule findings are warnings. Spec: `docs/features/audit-log/feature.md`.
 - **Unreleased · Access levels, part 3**: on the Roster, Leads start on a **My teams** filter; rows of people outside their teams show a lock and *Not in your teams* and don't edit; *assign all* skips them and says how many.
 - **Unreleased · Access levels, part 2**: screens match each level: menu items hidden, *no access* page for Users/Settings, view-only Settings (Planners), Users (Planners, Leads), Roster and task drawer (Members); Leads edit only details of teams they lead; Clear/Upload roster only for Planners and Admins.
 - **Unreleased · Branch cleanup**: `branch-policy.yml` checks branch names and Conventional Commit PR titles; `branch-cleanup.yml` deletes a PR's branch after it is merged.

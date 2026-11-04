@@ -6,8 +6,8 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - `npm run dev` / `npm run build` — dev server / production build
 - `npm run seed:data` — seeds the `users` table from `json/` (**overwrites it**; also resets any CRUD changes; does not touch `roster` or settings tables)
 - `npm run migrate:settings` — idempotent: seeds settings tables from `json/` if missing, backs up `users`, converts `stationCode` → `locationId`, creates roles from role ids in use, adds `users.access` (existing people → `admin`)
-- `npx tsc --noEmit` — typecheck (ESLint config is currently broken; don't rely on `next lint`)
-- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + data store (needs a build and Playwright)
+- `npx tsc --noEmit` — typecheck · `npm run lint` — ESLint (flat config; 0 errors required, some React-compiler rules are still warnings — don't add new ones)
+- `npm test` — unit tests (`node --test`, Node 22+) · `npm run verify` — typecheck + lint + tests + build · `npm run smoke -- <url>` — post-deploy auth/header checks · `node scripts/e2e/sso.e2e.mjs` — SSO end-to-end with fake Google + data store (needs a build and Playwright)
 
 ## Data rules
 - Tables: `users`, `roster`, `work_tasks`, settings tables (`roster_codes`, `locations`, `roles`, `task_statuses`, `story_points`, `app_settings`) + `teams`, `team_members`. Row 1 = header. Column order is defined once in `lib/schema.ts`. Don't edit header cells by hand: readers fail loudly (`assertColumns`) if a required column is missing.
@@ -27,6 +27,7 @@ Resource-management system for small/medium teams: plan capacity from the **rost
 - **Links** are http(s) only (`safeUrl` in `lib/links.ts`), rendered with `target="_blank" rel="noopener noreferrer"`; Jira/GitLab/GitHub detection is in `describeLink`.
 - **Availability warns, never blocks**: `lib/capacity.ts` (pure) + `getAssigneeAvailability` compute working/leave/unscheduled days over the task window from the roster, plus open story points; the picker shows it and warns, but any active person can be assigned.
 - **Smart assign (AI pilot)**: `suggestAssignees` (`lib/smart-assign-actions.ts`) is read-only and only **suggests** (the person presses *Assign*; never auto-assign). Pure scoring/prompt/response parsing in `lib/smart-assign.ts` (unit-tested); the Claude API is called only from `lib/claude.ts` (`server-only`, key in `ANTHROPIC_API_KEY`, model `SMART_ASSIGN_MODEL`, default `claude-opus-5-5`). Candidates are pseudonymised (`P1…`) before they're sent; the model can only pick from the shortlist and scores stay the rules' scores. Any AI failure (no key, timeout, refusal, bad JSON, throttle) falls back to the rules with a note.
+- **Audit log** (`/audit`, table `audit_log`, admin only via `audit.view`): append-only history of who changed what. Every successful write action ends with `await recordAudit(actor, { action, entity, entityId, summary })` (`lib/audit-log.ts`, best effort: a logging failure is logged and never fails the action). Shape/cleaning/filtering is pure in `lib/audit.ts` (unit-tested). Summaries name the thing and the change (code, title, `access a → b`), **never** secrets, tokens, emails/phones or whole payloads. Never edit or delete audit rows from the app. New write actions must record an entry.
 - Order multi-step writes so a failure never leaves dangling references (delete a user's roster rows and memberships before the `users` row).
 - After a mutation, `revalidatePath` every page that shows the data (`/users`, `/`, `/roster`, `/tasks`, `/teams`, `/settings`).
 - **PWA**: manifest in `app/manifest.ts`, service worker `public/sw.js`. The SW may cache only content-hashed build assets (`/_next/static/*`) and `/icons/*` — **never pages, server-action responses or any data** (shared devices, private staff data); offline navigations get `public/offline.html`. Public static PWA files must stay excluded in the `proxy.ts` matcher. Bump `VERSION` in `sw.js` to evict old caches.
@@ -112,7 +113,7 @@ Start every feature, fix or refactor with `/dev-workflow` (brainstorm -> plan ->
 | `release` | commit, PR, version, deploy, rollback | tag + release notes |
 | `product-owner` | what to build next, backlog/RICE, user stories + ACs, domain critique or acceptance (WFM/resource-planning SME; also a `product-owner` subagent in `.claude/agents/`) | `docs/product/backlog.md`, `docs/product/briefs/<slug>.md` |
 
-Gate commands: `npm run verify` (tsc + tests + build) · `npm test` · `npm run smoke -- <url>` (post-deploy auth/header checks). Never mark work done while a gate is red; report real output.
+Gate commands: `npm run verify` (tsc + lint + tests + build) · `npm test` · `npm run smoke -- <url>` (post-deploy auth/header checks). Never mark work done while a gate is red; report real output.
 
 ## Git strategy
 Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agent session may be given a fixed branch: use it). Conventional Commits (PR titles checked by `branch-policy.yml`; `branch-cleanup.yml` deletes merged branches). Commit only when asked, after `npm run verify`. Docs travel with the code (README + this file). SemVer tags `vX.Y.Z`; details in the `release` skill.
@@ -121,7 +122,7 @@ Never commit to `main`. Branches `feat/*`, `fix/*`, `chore/*`, `docs/*` (an agen
 **Whenever you add a feature or change how a feature works, update `README.md` in the same change** — the features table, tab list, setup/migration/deploy steps, project structure and a one-line entry at the top of the Changelog. Update this file (`CLAUDE.md`) too if the change adds or alters a rule, tab, config location or convention. A change isn't done until the docs match the code.
 
 ## Definition of done
-1. `npm run verify` passes (typecheck, tests, build).
+1. `npm run verify` passes (typecheck, lint, tests, build).
 2. Exercised in the browser at desktop and 375px, including empty / error / keyboard-only paths.
 3. Stored data verified after create / edit / delete (remove only the test rows you added; don't re-run `seed:data` casually — it overwrites `users`).
 4. No new hardcoded data, `any`, `@ts-ignore`, or secrets in the diff.

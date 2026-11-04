@@ -1,11 +1,12 @@
 import { readTable, type Cell } from "./store";
-import { USER_REQUIRED_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
+import { AUDIT_COLUMNS, USER_REQUIRED_COLUMNS, WORK_TASK_COLUMNS, TEAM_COLUMNS, TEAM_MEMBER_COLUMNS } from "./schema";
 import type { User } from "../app/lib/types";
 import type { RosterEntry } from "../app/roster/types";
 import type { WorkTask, TaskLink } from "../app/tasks/types";
 import type { Team, TeamMember } from "../app/teams/types";
 import { MONTH_RE } from "./roster-dates";
 import { parseAccess } from "./access";
+import { parseAuditRows, type AuditEntry } from "./audit";
 
 // Tables: see lib/schema.ts.
 
@@ -178,5 +179,19 @@ export async function loadTeams(): Promise<{ teams: Team[]; members: TeamMember[
   } catch (error) {
     console.error("Error loading teams:", error);
     return { teams: [], members: [], error: true };
+  }
+}
+
+const AUDIT_LOAD_LIMIT = 500;
+
+/** The newest audit entries (a missing tab = nothing recorded yet), with a load-failure flag. */
+export async function loadAuditLog(): Promise<{ entries: AuditEntry[]; error: boolean }> {
+  try {
+    const rows = await readOptionalTable("audit_log", AUDIT_COLUMNS);
+    const entries = parseAuditRows(rows).sort((a, b) => (a.at < b.at ? 1 : -1)).slice(0, AUDIT_LOAD_LIMIT);
+    return { entries, error: false };
+  } catch (error) {
+    console.error("Error loading audit log:", error);
+    return { entries: [], error: true };
   }
 }

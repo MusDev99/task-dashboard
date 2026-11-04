@@ -18,6 +18,8 @@ import CalendarView from "./CalendarView";
 import TaskDrawer, { type DrawerTarget } from "./TaskDrawer";
 import type { TaskActions } from "./TaskMenu";
 import { can, canSetTaskStatus, type AccessLevel } from "../../lib/access";
+import { download, toCsv } from "../roster/csv";
+import { tasksToRows } from "./export";
 import type { Person, WorkTask } from "./types";
 import type { TeamOption } from "../teams/types";
 
@@ -195,6 +197,11 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
   };
 
   const deletingSubs = deleting ? (subtasksOf.get(deleting.id) ?? []).length : 0;
+  const exportCsv = () => {
+    const rows = tasksToRows(calendarItems, peopleMap, (k) => config.statuses.find((s) => s.key === k)?.label ?? k, displayName);
+    download(`tasks-${today}.csv`, toCsv(rows));
+    notify("success", `Exported ${rows.length - 1} task${rows.length === 2 ? "" : "s"}`);
+  };
   const pickView = (v: View) => { setView(v); setPage(1); };
   const clearFilters = () => { setQ(""); setSearch(""); setStatus("all"); setAssignee(""); setTeam(""); setLabel(""); setPage(1); };
 
@@ -244,6 +251,7 @@ export default function TasksClient({ tasks, people, teams, config, today, loadE
           {allLabels.map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
         </div>
+        <button type="button" className="btn" onClick={exportCsv} disabled={filtered.length === 0} title="Download the tasks matching your filters, with their subtasks, as CSV">Export CSV</button>
         {saving > 0 && <span className="field-hint" aria-live="polite" style={{ color: "var(--accent-amber)" }}>Saving…</span>}
       </div>
 

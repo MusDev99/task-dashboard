@@ -8,6 +8,7 @@ import { getLocations, getRoles, readSettingsTab } from "./settings";
 import { APP_SETTING_COLUMNS } from "./schema";
 import { isMissingTab } from "./cells";
 import { actorWith, requireSession } from "./auth";
+import { recordAudit } from "./audit-log";
 import {
   SPECS, cleanEntity, keyOf, validateEntity, validateGeneral,
   type EntityKind, type GeneralInput, type SettingErrors, type SettingRecord,
@@ -86,7 +87,7 @@ function usageText(kind: EntityKind, n: number): string {
 }
 
 export async function saveSetting(kind: EntityKind, originalKey: string | null, raw: Record<string, unknown>): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "saveSetting");
+  const { actor, denied } = await actorWith("settings.edit", "saveSetting");
   if (denied) return denied;
   try {
     const spec = SPECS[kind];
@@ -114,8 +115,9 @@ export async function saveSetting(kind: EntityKind, originalKey: string | null, 
     }
     if (originalKey) await updateRowByKey(spec.tab, spec.headers, spec.keyField, originalKey, asRow(record));
     else await appendRow(spec.tab, spec.headers, asRow(record));
-    refresh();
     const name = String(record.label || record.name || record.code || record.value);
+    await recordAudit(actor, { action: originalKey ? "update" : "create", entity: "setting", entityId: `${kind}:${keyOf(kind, record)}`, summary: `${originalKey ? "Saved" : "Added"} ${spec.noun} “${name}”` });
+    refresh();
     return { ok: true, message: `${originalKey ? "Saved" : "Added"} ${spec.noun} “${name}”` };
   } catch (e) {
     return fail(e);
@@ -133,7 +135,7 @@ export async function setSettingActive(kind: EntityKind, key: string, active: bo
 }
 
 export async function deleteSetting(kind: EntityKind, key: string): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "deleteSetting");
+  const { actor, denied } = await actorWith("settings.edit", "deleteSetting");
   if (denied) return denied;
   try {
     const spec = SPECS[kind];
@@ -149,6 +151,7 @@ export async function deleteSetting(kind: EntityKind, key: string): Promise<Sett
     if (kind === "point" && existing.length <= 1) return { ok: false, message: "Keep at least one story-point value." };
     await seedIfMissing(kind);
     await deleteRowsMatching(spec.tab, spec.keyField, new Set([key]));
+    await recordAudit(actor, { action: "delete", entity: "setting", entityId: `${kind}:${key}`, summary: `Deleted ${spec.noun} “${record.label || record.name || record.code || record.value}”` });
     refresh();
     return { ok: true, message: `Deleted ${spec.noun} “${record.label || record.name || record.code || record.value}”` };
   } catch (e) {
@@ -157,7 +160,7 @@ export async function deleteSetting(kind: EntityKind, key: string): Promise<Sett
 }
 
 export async function saveGeneral(raw: Record<string, unknown>): Promise<SettingsResult> {
-  const { denied } = await actorWith("settings.edit", "saveGeneral");
+  const { actor, denied } = await actorWith("settings.edit", "saveGeneral");
   if (denied) return denied;
   try {
     const g: GeneralInput = {
@@ -171,6 +174,7 @@ export async function saveGeneral(raw: Record<string, unknown>): Promise<Setting
     if (Object.keys(errors).length) return { ok: false, errors };
     await ensureTab("app_settings", APP_SETTING_COLUMNS);
     await writeTable("app_settings", [...APP_SETTING_COLUMNS], Object.entries(g).map(([k, v]) => [k, v]));
+    await recordAudit(actor, { action: "update", entity: "setting", entityId: "general", summary: "Saved general settings" });
     refresh();
     return { ok: true, message: "Saved general settings" };
   } catch (e) {
