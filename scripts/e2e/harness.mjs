@@ -21,7 +21,13 @@ export async function startHarness({ prefix, port, people, seed = {} }) {
   writeFileSync(join(dir, 'users.json'), JSON.stringify({ values: [USER_HEAD, ...people.map((p) => person(...p))] }));
   writeFileSync(join(dir, 'seed.json'), JSON.stringify(seed));
 
-  const tabs = () => JSON.parse(readFileSync(join(dir, 'tabs.json'), 'utf8'));
+  // The fake store rewrites tabs.json on every write, so a read can catch it half-written: retry briefly.
+  const tabs = () => {
+    for (let i = 0; ; i++) {
+      try { return JSON.parse(readFileSync(join(dir, 'tabs.json'), 'utf8')); }
+      catch (e) { if (i >= 20) throw e; Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50); }
+    }
+  };
   /** A tab as objects keyed by its header (always the live data the app has stored). */
   const table = (name) => { const [h = [], ...rows] = tabs()[name] ?? []; return rows.map((r) => Object.fromEntries(h.map((k, i) => [k, r[i]]))); };
 

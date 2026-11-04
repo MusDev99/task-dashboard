@@ -123,11 +123,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 /* ─── Stat Card ──────────────────────────────────── */
 .stat-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  --tone: var(--accent-indigo); /* StatCard sets this from its `color` prop */
+  position: relative; overflow: hidden;
+  background: radial-gradient(240px 100px at 100% 0, color-mix(in srgb, var(--tone) 13%, transparent), transparent 75%), color-mix(in srgb, var(--bg-card) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tone) 20%, var(--border-subtle));
   border-radius: var(--radius-lg);
   padding: 1.5rem;
 }
+.stat-card::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: linear-gradient(90deg, var(--tone), transparent 70%); }
 
 /* ─── Avatar ─────────────────────────────────────── */
 .avatar {
@@ -376,8 +379,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .skeleton { background-color: var(--bg-card); }
 .page { max-width: 1200px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.page-title { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.03em; margin: 0 0 0.35rem; }
-.page-subtitle { color: var(--text-secondary); font-size: 0.9rem; margin: 0; }
+.page-title { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.035em; margin: 0; }
+/* The same pink-to-amber accent as the sign-in headline, as a short bar under every page title. */
+.page-title::after { content: ""; display: block; width: 40px; height: 3px; margin-top: 0.55rem; border-radius: var(--radius-full); background: linear-gradient(90deg, var(--accent-pink), var(--accent-amber)); }
+.empty-state .page-title::after { margin-inline: auto; }
+.page-subtitle { color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; margin: 0.6rem 0 0; max-width: 62ch; }
+.main-content { background-image: radial-gradient(720px 240px at 0 0, color-mix(in srgb, var(--accent-pink) 6%, transparent), transparent 72%); background-repeat: no-repeat; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Buttons */
@@ -719,8 +726,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .summary-card { padding: 1rem 1.25rem; }
-.summary-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
-.summary-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+.summary-label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.summary-grid .stat-card:nth-child(1) { --tone: var(--accent-indigo); }
+.summary-grid .stat-card:nth-child(2) { --tone: var(--accent-amber); }
+.summary-grid .stat-card:nth-child(3) { --tone: var(--accent-emerald); }
+.summary-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; }
 @media (max-width: 480px) {
   .summary-grid { gap: 0.5rem; }
   .summary-card { padding: 0.75rem !important; }
@@ -808,8 +818,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
 /* ═══ Task management ══════════════════════════════════════════════════════ */
 .task-page-header { align-items: center; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle); }
-.task-heading { display: flex; align-items: center; gap: 1rem; }
-.task-heading-icon { width: 52px; height: 52px; border-radius: var(--radius-md); display: grid; place-items: center; color: var(--danger); background: var(--danger-bg); border: 1px solid rgba(255, 107, 107, 0.3); flex-shrink: 0; }
+.task-heading { display: flex; align-items: flex-start; gap: 1rem; }
+.task-page-header .page-subtitle { max-width: 90ch; }
+.task-heading-icon { width: 52px; height: 52px; border-radius: var(--radius-md); display: grid; place-items: center; color: var(--accent-amber); background: color-mix(in srgb, var(--accent-amber) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent-amber) 32%, transparent); flex-shrink: 0; }
 .btn-lg { min-height: 48px; padding: 0 1.4rem; font-size: 0.95rem; }
 .task-bar { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.6rem; margin-bottom: 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--bg-secondary); }
 .seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--bg-primary); border: 1px solid var(--border-subtle); flex-wrap: wrap; }
@@ -1208,10 +1219,10 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .stat-card-compact { padding: 1.25rem; }
 .stat-card-body { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
-.stat-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
-.stat-value { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; }
+.stat-label { font-size: 0.72rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+.stat-value { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
 .stat-hint { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.35rem; }
-.stat-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.stat-icon { width: 40px; height: 40px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent); }
 
 /* ═══ Mobile-first patterns shared by every module (≤ 768px) ═══════════════ */
 .filter-toggle { display: none; }
@@ -1220,8 +1231,8 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 @media (max-width: 768px) {
   /* Compact page header: the title + one line, never a wall of text above the data. */
   .page-header { margin-bottom: 1rem; gap: 0.75rem; }
-  .page-title { font-size: 1.4rem; }
-  .page-subtitle { font-size: 0.82rem; }
+  .page-title { font-size: 1.55rem; }
+  .page-subtitle { font-size: 0.85rem; margin-top: 0.5rem; }
   .task-heading-icon { display: none !important; }
 
   /* Primary action becomes an extended FAB above the tab bar (Fitts: thumb zone, always visible). */
@@ -1420,4 +1431,9 @@ input.toggle:disabled, .input:disabled { opacity: 0.6; cursor: not-allowed; }
 @media (min-width: 900px) {
   .my-columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
   .my-task .select-sm { min-height: 0; }
+}
+
+/* Phone stat strip: its gutter must equal the page padding (0.75rem on small phones) so the first card isn't flush with the edge. */
+@media (max-width: 480px) {
+  .stats-grid.stats-compact { margin-inline: -0.75rem; padding-inline: 0.75rem; scroll-padding-inline: 0.75rem; }
 }

@@ -37,7 +37,9 @@ const loadTab = (t) => (t === 'users' ? JSON.parse(fs.readFileSync(file('users.j
 const saveTab = (t, values) => {
   if (t === 'users') fs.writeFileSync(file('users.json'), JSON.stringify({ values }));
   else tabs.set(t, values);
-  fs.writeFileSync(file('tabs.json'), JSON.stringify(Object.fromEntries([...tabs, ['users', loadTab('users')]])));
+  // Write to a temp file and rename it, so a test reading tabs.json never sees a half-written file.
+  fs.writeFileSync(file('tabs.tmp'), JSON.stringify(Object.fromEntries([...tabs, ['users', loadTab('users')]])));
+  fs.renameSync(file('tabs.tmp'), file('tabs.json'));
 };
 const sheetId = (t) => (t === 'users' ? 0 : 1 + created.indexOf(t));
 const put = (t, startRow, rows) => {
